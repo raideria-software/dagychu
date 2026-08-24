@@ -38,11 +38,12 @@ By submitting a contribution, you represent that you have the right to submit it
 Before opening a pull request:
 
 1. make sure the change is focused;
-2. run the relevant tests;
-3. describe the problem being solved;
-4. explain notable implementation decisions;
-5. identify breaking behavior or migration requirements;
-6. link the relevant issue when one exists.
+2. describe the problem being solved;
+3. explain notable implementation decisions;
+4. identify breaking behavior or migration requirements;
+5. link the relevant issue when one exists.
+
+This public repository ships the Community **install distribution** (Compose, install scripts, examples). Application source for Community is not in this tree; discuss product-code changes in GitHub Issues first.
 
 Maintainers may request changes or decline contributions that do not fit the current product direction.
 

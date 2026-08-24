@@ -61,12 +61,12 @@ The API stores execution state and publishes work. Workers consume queued jobs a
 
 ## Quick start (recommended)
 
-Community production installs use a **client pack** (GitHub Release asset `client-community-<version>`): pinned GHCR image, Compose file, `.env.example`, and `install.sh`.
+This tree is the **Community install distribution** (same layout as the GitHub Release asset `client-community-<version>`). Application code runs from the pinned GHCR image; there is no local app build in this pack.
 
-Requirements: Docker Engine and Docker Compose v2.
+Requirements: Docker Engine and Docker Compose v2. Pulling from GHCR needs a GitHub PAT with `read:packages` if the package is not public (`install.sh` logs in).
 
-1. Download and unpack the Community client pack for the version you want (see GitHub Releases).
-2. From the unpacked directory:
+1. Download and unpack the Community client pack (or clone this repository).
+2. From this directory:
 
 ```bash
 ./install.sh
@@ -75,25 +75,26 @@ Requirements: Docker Engine and Docker Compose v2.
 3. Open the UI printed by the installer. Default: **http://localhost:3000** (or `FRONTEND_HOST_PORT` in `.env`).
 4. Sign in with the UI admin token printed by `install.sh`.
 
-The pack pulls the Community image from GHCR:
+The stack uses `docker-compose.yml` (pinned `ghcr.io/raideria-software/dagychu:<version>`). Optional overlay when jobs run via the host Docker engine: `docker-compose.docker-sock.yml` (`JOB_EXECUTOR=docker`).
 
 ```bash
 docker pull ghcr.io/raideria-software/dagychu:3.4.1
 ```
 
-Demo pipelines are seeded under `runtime/demo/` on first install. Operator details are in `CLIENT_SETUP.md` inside the pack.
+Demo pipelines are seeded under `runtime/demo/` on first install. Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
+
+After install, use `./update.sh` for a newer pack/image tag. Do **not** run `./install.sh` again on an existing deployment (it regenerates secrets).
 
 Use explicit version tags in production rather than `latest`. Current product line: **3.4.1**.
 
-## Run from this repository (development)
+## What this repository contains
 
-```bash
-./update-dev.sh
-```
+- `install.sh` / `update.sh` / `reload-projects.sh`
+- `docker-compose.yml`, `.env.example`, `dagychu-instance.yaml`
+- `examples/`, `skills/`
+- Apache `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, `CONTRIBUTING.md`
 
-UI: http://localhost:3000 · API: http://localhost:8000
-
-Do not treat `docker-compose.prod.yml` as the Community distribution. Production Community compose is `docker-compose.community.prod.yml`, rendered into the client pack as `docker-compose.yml`.
+This pack does not include a local development compose or an application source tree. You run Dagychu from the GHCR image via `docker-compose.yml`.
 
 ## Community and Enterprise
 
@@ -121,7 +122,7 @@ Do not disclose vulnerabilities in public GitHub issues. See [SECURITY.md](SECUR
 
 ## Documentation
 
-- This README and [CLIENT_SETUP.md](CLIENT_SETUP.md) (install pack)
+- This README and [CLIENT_SETUP.md](CLIENT_SETUP.md)
 - In a running instance: **Settings → Documentation** and **Settings → Legal**
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
