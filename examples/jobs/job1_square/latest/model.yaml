@@ -1,0 +1,16 @@
+template:
+  number: 4
+input_schema:
+  type: object
+  required: [number]
+  properties:
+    number:
+      type: integer
+      minimum: 1
+      maximum: 10
+output_schema:
+  type: object
+  required: [result]
+  properties:
+    result:
+      type: integer

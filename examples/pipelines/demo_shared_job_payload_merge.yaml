@@ -1,0 +1,50 @@
+pipeline_name: demo_shared_job_payload_merge
+pipeline_tags: [demo, merge, shared_job, payload]
+jobs:
+  - job_name: prepare_payload
+    ui_name: Prepare payload
+    path: runtime_seed/jobs/job1_square/latest/main.py
+    deps: []
+    outputs: [payload]
+    inputs:
+      number: initial
+
+  - job_name: shared_sender_email
+    ui_name: Shared sender (email profile)
+    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    deps: [prepare_payload]
+    outputs: [minute_utc, ok]
+    inputs:
+      payload:
+        merge:
+          - from: job
+            job: prepare_payload
+            key: payload
+          - from: const
+            value:
+              profile: email
+              template: invoice_v1
+          - from: initial
+            key: payload
+        priority: [job, const, initial]
+        deep_merge: true
+
+  - job_name: shared_sender_sms
+    ui_name: Shared sender (sms profile)
+    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    deps: [prepare_payload]
+    outputs: [minute_utc, ok]
+    inputs:
+      payload:
+        merge:
+          - from: job
+            job: prepare_payload
+            key: payload
+          - from: const
+            value:
+              profile: sms
+              template: invoice_v1_short
+          - from: initial
+            key: payload
+        priority: [job, const, initial]
+        deep_merge: true

@@ -1,0 +1,50 @@
+pipeline_name: demo_payload_merge_variants
+pipeline_tags: [demo, merge, variants, payload]
+jobs:
+  - job_name: make_base_payload
+    ui_name: Build base payload
+    path: runtime_seed/jobs/job1_square/latest/main.py
+    deps: []
+    outputs: [payload]
+    inputs:
+      number: initial
+
+  - job_name: finalize_for_project_a
+    ui_name: Finalize payload (Project A)
+    path: runtime_seed/jobs/job2_mirror_add/latest/main.py
+    deps: [make_base_payload]
+    outputs: [result]
+    inputs:
+      number:
+        merge:
+          - from: job
+            job: make_base_payload
+            key: payload
+          - from: const
+            value:
+              project_tag: project_a
+              notify_channel: email
+          - from: initial
+            key: payload
+        priority: [job, const, initial]
+        deep_merge: false
+
+  - job_name: finalize_for_project_b
+    ui_name: Finalize payload (Project B)
+    path: runtime_seed/jobs/job2_mirror_add/latest/main.py
+    deps: [make_base_payload]
+    outputs: [result]
+    inputs:
+      number:
+        merge:
+          - from: job
+            job: make_base_payload
+            key: payload
+          - from: const
+            value:
+              project_tag: project_b
+              notify_channel: telegram
+          - from: initial
+            key: payload
+        priority: [job, const, initial]
+        deep_merge: false

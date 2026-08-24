@@ -1,0 +1,14 @@
+template:
+  number: 52
+input_schema:
+  type: object
+  required: [number]
+  properties:
+    number:
+      type: integer
+output_schema:
+  type: object
+  required: [result]
+  properties:
+    result:
+      type: integer

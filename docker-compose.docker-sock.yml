@@ -1,0 +1,15 @@
+# Optional overlay: mount host docker.sock for JOB_EXECUTOR=docker.
+# Enterprise default (compose.prod / Helm) does NOT mount the socket.
+# Usage:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.docker-sock.yml up -d
+services:
+  api:
+    environment:
+      JOB_EXECUTOR: "${JOB_EXECUTOR:-docker}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  worker:
+    environment:
+      JOB_EXECUTOR: "${JOB_EXECUTOR:-docker}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

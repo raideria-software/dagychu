@@ -1,0 +1,48 @@
+pipeline_name: demo_notify_channel_modes
+pipeline_tags: [demo, notifications, telegram, slack]
+jobs:
+  - job_name: prepare_payload
+    ui_name: Prepare payload
+    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    deps: []
+    outputs: [minute_utc, ok]
+    inputs:
+      payload: initial
+
+  - job_name: notify_always
+    ui_name: Notify channel (always)
+    path: runtime_seed/jobs/notify_channel/latest/main.py
+    deps: [prepare_payload]
+    run_on_upstream_failure: true
+    outputs: [sent, mode, should_send]
+    inputs:
+      payload:
+        merge:
+          - from: const
+            value:
+              mode: always
+              channel: telegram
+              message_prefix: "[demo always]"
+              strict_delivery: false
+          - from: initial
+            key: notify
+        priority: [initial, const, job]
+
+  - job_name: notify_failures
+    ui_name: Notify channel (on any failure)
+    path: runtime_seed/jobs/notify_channel/latest/main.py
+    deps: [prepare_payload]
+    run_on_upstream_failure: true
+    outputs: [sent, mode, should_send]
+    inputs:
+      payload:
+        merge:
+          - from: const
+            value:
+              mode: on_any_failure
+              channel: slack
+              message_prefix: "[demo failures]"
+              strict_delivery: false
+          - from: initial
+            key: notify
+        priority: [initial, const, job]

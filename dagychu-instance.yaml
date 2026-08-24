@@ -1,0 +1,60 @@
+# Dagychu Community edition — default instance profile (shipped in client-community package).
+dagychu_instance_version: 1
+
+onboarding:
+  enabled: false
+  tour:
+    file: onboarding-tour.yaml
+
+monitoring:
+  dashboard:
+    screens:
+      overview: true
+      execution_map: false
+      operational: false
+      report: false
+      api_security: false
+  v2:
+    enabled: false
+    ai_enabled: false
+
+ui:
+  # White-label: hide product/vendor text in the shell (logo + compact letter remain).
+  branding:
+    hide_product_name: false
+    hide_vendor_footer: false
+    hide_tagline: false
+    compact_letter: "D"
+  # Legal documents (Terms, Privacy, Notices) ship in the image — Settings → Legal.
+  # Optional ui.legal substitutes {{LEGAL_ENTITY}} if those tokens appear in the markdown.
+  # legal:
+  #   entity: "Acme Ltd"
+  #   privacy_contact: "privacy@example.com"
+  #   governing_law: "England and Wales"
+  #   effective_date: "2026-08-14"
+  # Hide nav sections that are not needed for your deployment (restart after edit).
+  nav:
+    screens:
+      dashboard: true
+      my_dashboards: false
+      pipelines: true
+      configuration: true
+      execution: true
+      logs: true
+      system: true
+      scheduler: true
+      guide: true
+      # In-app feed + header console (Slack/Telegram delivery remains Enterprise-only).
+      notifications: true
+      admin: true
+      settings: true
+
+execution:
+  project_execution_gate_enabled: false
+
+external_api:
+  enabled: false
+
+bootstrap:
+  enabled: false
+  pipelines: []

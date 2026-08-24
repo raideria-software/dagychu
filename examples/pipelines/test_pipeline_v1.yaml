@@ -1,0 +1,42 @@
+pipeline_name: test_pipeline_v1
+jobs:
+  - job_name: job1_square
+    ui_name: Job 1 (Square)
+    path: jobs/job1_square/latest/main.py
+    deps: []
+    outputs: [result]
+    inputs:
+      number: initial
+
+  - job_name: job2_mirror_add
+    ui_name: Job 2 (Mirror Add)
+    path: jobs/job2_mirror_add/latest/main.py
+    deps: [job1_square]
+    outputs: [result]
+    inputs:
+      number:
+        job: job1_square
+        key: result
+
+  - job_name: job3_digit_mul
+    ui_name: Job 3 (Digit Mul)
+    path: jobs/job3_digit_mul/latest/main.py
+    deps: [job1_square]
+    outputs: [result]
+    inputs:
+      number:
+        job: job1_square
+        key: result
+
+  - job_name: job4_sum_to_date
+    ui_name: Job 4 (Sum to Date)
+    path: jobs/job4_sum_to_date/latest/main.py
+    deps: [job2_mirror_add, job3_digit_mul]
+    outputs: [result, date]
+    inputs:
+      left:
+        job: job2_mirror_add
+        key: result
+      right:
+        job: job3_digit_mul
+        key: result

@@ -1,0 +1,7 @@
+# Optional project config for demo_examples=repo:examples (tutorial pipelines under examples/pipelines/).
+dagychu_config_version: 1
+stack:
+  python: "3.12"
+  bash: false
+dependencies:
+  python: []

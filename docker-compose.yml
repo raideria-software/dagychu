@@ -1,0 +1,427 @@
+# Community edition production compose (no ClickHouse; lighter defaults).
+# App image: public Community GHCR (raideria-software/dagychu).
+# 3.4.1 is substituted by scripts/prepare_client_pack.sh (and the same default
+# repo is used if you replace the tag locally). Override repo via --image in the pack script.
+x-dagychu-platform: &dagychu-platform
+  platform: ${DAGYCHU_PLATFORM:-linux/amd64}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    command: ["postgres", "-c", "max_connections=${POSTGRES_MAX_CONNECTIONS:-200}"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-200}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./ops/rabbitmq.conf:/etc/rabbitmq/conf.d/10-loopback.conf:ro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    command: python -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 600s
+    environment:
+      APP_ENV: prod
+      DAGYCHU_EDITION: community
+      DAGYCHU_SERVICE_ROLE: api
+      INIT_DB_ON_START: "true"
+      # verify = fast check when schema exists; empty/fresh DB auto-falls back to migrate.
+      INIT_DB_STARTUP_MODE: "${INIT_DB_STARTUP_MODE:-verify}"
+      DB_POOL_SIZE: "${DB_POOL_SIZE_API:-4}"
+      DB_MAX_OVERFLOW: "${DB_MAX_OVERFLOW_API:-2}"
+      DB_POOL_TIMEOUT_SEC: "${DB_POOL_TIMEOUT_SEC_API:-30}"
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REALTIME_EVENTS_ENABLED: "${REALTIME_EVENTS_ENABLED:-true}"
+      TASK_WS_HEARTBEAT_SEC: "${TASK_WS_HEARTBEAT_SEC:-45}"
+      TASK_WS_POLL_FALLBACK_SEC: "${TASK_WS_POLL_FALLBACK_SEC:-30}"
+      QUEUE_NAME: ${QUEUE_NAME:-task_queue}
+      RUNTIME_ROOT: /srv/runtime
+      DAGYCHU_REPO_ROOT: /srv
+      PIPELINE_YAML_DIRS: ${PIPELINE_YAML_DIRS:-default=.}
+      JOB_APP_ROOT: ${JOB_APP_ROOT:-/srv/runtime}
+      PIPELINE_DISK_SYNC_INTERVAL_SECONDS: "${PIPELINE_DISK_SYNC_INTERVAL_SECONDS:-30}"
+      AUTH_ENABLED: "${AUTH_ENABLED:-true}"
+      AUTH_MODE: "${AUTH_MODE:-rbac}"
+      UI_ADMIN_TOKEN: "${UI_ADMIN_TOKEN}"
+      WORKER_SERVICE_TOKEN: "${WORKER_SERVICE_TOKEN}"
+      PROJECT_VARS_SECRET_KEY: "${PROJECT_VARS_SECRET_KEY:-}"
+      AUTH_SESSION_IDLE_TTL_HOURS: "${AUTH_SESSION_IDLE_TTL_HOURS:-24}"
+      AUTH_SESSION_MAX_TTL_HOURS: "${AUTH_SESSION_MAX_TTL_HOURS:-720}"
+      AUTH_SESSION_TOUCH_INTERVAL_MIN: "${AUTH_SESSION_TOUCH_INTERVAL_MIN:-5}"
+      JOB_EXECUTOR: "${JOB_EXECUTOR:-local}"
+      DAGYCHU_PROJECT_CONFIG_POLL_SECONDS: "${DAGYCHU_PROJECT_CONFIG_POLL_SECONDS:-0}"
+      DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS: "${DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS:-false}"
+      DAGYCHU_BUILD_ROOT: ${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      DAGYCHU_PUBLIC_BASE_URL: ${DAGYCHU_PUBLIC_BASE_URL:-}
+      RABBITMQ_HTTP_URL: ${RABBITMQ_HTTP_URL:-http://rabbitmq:15672}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      QUEUE_ORPHAN_GRACE_SEC: ${QUEUE_ORPHAN_GRACE_SEC:-90}
+      QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK: ${QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK:-10}
+      # Orphan RUNNING task/job release (no online fleet owner) — used by reconcile-stuck + finalize.
+      ORPHAN_RUNNING_JOB_MAX_AGE_MIN: ${ORPHAN_RUNNING_JOB_MAX_AGE_MIN:-15}
+      TASK_FINALIZE_GRACE_SEC: ${TASK_FINALIZE_GRACE_SEC:-45}
+      EXPECTED_WORKER_CONSUMERS: ${EXPECTED_WORKER_CONSUMERS:-}
+    volumes:
+      - ./runtime:/srv/runtime:ro
+      - dagychu_build:${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./dagychu-instance.yaml:/srv/dagychu-instance.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    command: python -m app.core_worker.worker
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,signal; os.kill(1, 0)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    environment:
+      APP_ENV: prod
+      DAGYCHU_EDITION: community
+      DAGYCHU_SERVICE_ROLE: worker
+      INIT_DB_ON_START: "false"
+      # Auto-sized from JOB_CONCURRENCY when unset (see db_connection_budget.scale_worker_pool).
+      DB_POOL_SIZE: "${DB_POOL_SIZE_WORKER:-}"
+      DB_MAX_OVERFLOW: "${DB_MAX_OVERFLOW_WORKER:-}"
+      # 0 = wait forever for a free connection (never fail JobRun on QueuePool timeout).
+      DB_POOL_TIMEOUT_SEC: "${DB_POOL_TIMEOUT_SEC_WORKER:-0}"
+      DB_WORKER_POOL_AUTO_MAX: "${DB_WORKER_POOL_AUTO_MAX:-64}"
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REALTIME_EVENTS_ENABLED: "${REALTIME_EVENTS_ENABLED:-true}"
+      QUEUE_NAME: ${QUEUE_NAME:-task_queue}
+      JOB_CONCURRENCY: ${JOB_CONCURRENCY:-}
+      JOB_TIMEOUT_SECONDS: ${JOB_TIMEOUT_SECONDS}
+      JOB_LOG_DIR: /var/log/job_runs
+      JOB_LOG_TOTAL_MAX_MB: ${JOB_LOG_TOTAL_MAX_MB}
+      JOB_LOG_DB_PREVIEW_MAX_ROWS: ${JOB_LOG_DB_PREVIEW_MAX_ROWS}
+      RUNTIME_ROOT: /srv/runtime
+      DAGYCHU_REPO_ROOT: /srv
+      PIPELINE_YAML_DIRS: ${PIPELINE_YAML_DIRS:-default=.}
+      JOB_APP_ROOT: ${JOB_APP_ROOT:-/srv/runtime}
+      JOB_EXECUTOR: "${JOB_EXECUTOR:-local}"
+      WORKER_SERVICE_TOKEN: "${WORKER_SERVICE_TOKEN}"
+      PROJECT_VARS_SECRET_KEY: "${PROJECT_VARS_SECRET_KEY:-}"
+      DAGYCHU_PROJECT_CONFIG_POLL_SECONDS: "${DAGYCHU_PROJECT_CONFIG_POLL_SECONDS:-0}"
+      DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS: "${DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS:-false}"
+      DAGYCHU_BUILD_ROOT: ${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      DAGYCHU_PUBLIC_BASE_URL: ${DAGYCHU_PUBLIC_BASE_URL:-}
+      WORKER_QUEUE_PREFETCH: ${WORKER_QUEUE_PREFETCH:-1}
+      WORKER_QUEUE_ORPHAN_RECONCILE_SEC: ${WORKER_QUEUE_ORPHAN_RECONCILE_SEC:-60}
+      QUEUE_ORPHAN_GRACE_SEC: ${QUEUE_ORPHAN_GRACE_SEC:-90}
+      QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK: ${QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK:-10}
+      # Orphan RUNNING task/job release (no online fleet owner) — used by reconcile-stuck + finalize.
+      ORPHAN_RUNNING_JOB_MAX_AGE_MIN: ${ORPHAN_RUNNING_JOB_MAX_AGE_MIN:-15}
+      TASK_FINALIZE_GRACE_SEC: ${TASK_FINALIZE_GRACE_SEC:-45}
+      WORKER_RUNNING_RECONCILE_SEC: ${WORKER_RUNNING_RECONCILE_SEC:-60}
+      WORKER_ORPHAN_RUNNING_GRACE_SEC: ${WORKER_ORPHAN_RUNNING_GRACE_SEC:-300}
+      WORKER_RECONCILE_BATCH: ${WORKER_RECONCILE_BATCH:-200}
+      WORKER_STALE_RUNNING_MINUTES: ${WORKER_STALE_RUNNING_MINUTES:-120}
+      EXPECTED_WORKER_CONSUMERS: ${EXPECTED_WORKER_CONSUMERS:-}
+    volumes:
+      - job_logs:/var/log/job_runs
+      - ./runtime:/srv/runtime:ro
+      - dagychu_build:${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  # Optional SLA deadline reserve worker (WORKER_DEADLINE_RESERVE=0 to disable / scale to 0).
+  # Consumes only sla_deadline_reserve_queue — never the main task_queue.
+  worker_deadline_reserve:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    command: python -m app.core_worker.worker
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,signal; os.kill(1, 0)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    environment:
+      APP_ENV: prod
+      DAGYCHU_EDITION: community
+      DAGYCHU_SERVICE_ROLE: worker
+      INIT_DB_ON_START: "false"
+      # Auto-sized from JOB_CONCURRENCY when unset (see db_connection_budget.scale_worker_pool).
+      DB_POOL_SIZE: "${DB_POOL_SIZE_WORKER:-}"
+      DB_MAX_OVERFLOW: "${DB_MAX_OVERFLOW_WORKER:-}"
+      # 0 = wait forever for a free connection (never fail JobRun on QueuePool timeout).
+      DB_POOL_TIMEOUT_SEC: "${DB_POOL_TIMEOUT_SEC_WORKER:-0}"
+      DB_WORKER_POOL_AUTO_MAX: "${DB_WORKER_POOL_AUTO_MAX:-64}"
+      DATABASE_URL: ${DATABASE_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REALTIME_EVENTS_ENABLED: "${REALTIME_EVENTS_ENABLED:-true}"
+      QUEUE_NAME: ${QUEUE_NAME:-task_queue}
+      SLA_DEADLINE_RESERVE_QUEUE_NAME: ${SLA_DEADLINE_RESERVE_QUEUE_NAME:-sla_deadline_reserve_queue}
+      WORKER_MODE: deadline_reserve
+      WORKER_HOST_LABEL: deadline_reserve
+      WORKER_DEADLINE_RESERVE: ${WORKER_DEADLINE_RESERVE:-1}
+      JOB_CONCURRENCY: ${JOB_CONCURRENCY:-}
+      JOB_TIMEOUT_SECONDS: ${JOB_TIMEOUT_SECONDS}
+      JOB_LOG_DIR: /var/log/job_runs
+      JOB_LOG_TOTAL_MAX_MB: ${JOB_LOG_TOTAL_MAX_MB}
+      JOB_LOG_DB_PREVIEW_MAX_ROWS: ${JOB_LOG_DB_PREVIEW_MAX_ROWS}
+      RUNTIME_ROOT: /srv/runtime
+      DAGYCHU_REPO_ROOT: /srv
+      PIPELINE_YAML_DIRS: ${PIPELINE_YAML_DIRS:-default=.}
+      JOB_APP_ROOT: ${JOB_APP_ROOT:-/srv/runtime}
+      JOB_EXECUTOR: "${JOB_EXECUTOR:-local}"
+      WORKER_SERVICE_TOKEN: "${WORKER_SERVICE_TOKEN}"
+      PROJECT_VARS_SECRET_KEY: "${PROJECT_VARS_SECRET_KEY:-}"
+      DAGYCHU_PROJECT_CONFIG_POLL_SECONDS: "${DAGYCHU_PROJECT_CONFIG_POLL_SECONDS:-0}"
+      DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS: "${DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS:-false}"
+      DAGYCHU_BUILD_ROOT: ${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      DAGYCHU_PUBLIC_BASE_URL: ${DAGYCHU_PUBLIC_BASE_URL:-}
+      WORKER_QUEUE_PREFETCH: ${WORKER_QUEUE_PREFETCH:-1}
+      WORKER_QUEUE_ORPHAN_RECONCILE_SEC: ${WORKER_QUEUE_ORPHAN_RECONCILE_SEC:-60}
+      QUEUE_ORPHAN_GRACE_SEC: ${QUEUE_ORPHAN_GRACE_SEC:-90}
+      QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK: ${QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK:-10}
+      # Orphan RUNNING task/job release (no online fleet owner) — used by reconcile-stuck + finalize.
+      ORPHAN_RUNNING_JOB_MAX_AGE_MIN: ${ORPHAN_RUNNING_JOB_MAX_AGE_MIN:-15}
+      TASK_FINALIZE_GRACE_SEC: ${TASK_FINALIZE_GRACE_SEC:-45}
+      WORKER_RUNNING_RECONCILE_SEC: ${WORKER_RUNNING_RECONCILE_SEC:-60}
+      WORKER_ORPHAN_RUNNING_GRACE_SEC: ${WORKER_ORPHAN_RUNNING_GRACE_SEC:-300}
+      WORKER_RECONCILE_BATCH: ${WORKER_RECONCILE_BATCH:-200}
+      WORKER_STALE_RUNNING_MINUTES: ${WORKER_STALE_RUNNING_MINUTES:-120}
+      EXPECTED_WORKER_CONSUMERS: ${EXPECTED_WORKER_CONSUMERS:-}
+    volumes:
+      - job_logs:/var/log/job_runs
+      - ./runtime:/srv/runtime:ro
+      - dagychu_build:${DAGYCHU_BUILD_ROOT:-/var/lib/dagychu-build}
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  scheduler:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    command: python -m uvicorn app.scheduler.main:app --host 0.0.0.0 --port 9020
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import json,sys,urllib.request;d=json.loads(urllib.request.urlopen('http://127.0.0.1:9020/health',timeout=5).read());e=d.get('engine') or {};sys.exit(0 if e.get('running') and int(e.get('consecutive_lock_skips') or 0)<3 else 1)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      DAGYCHU_EDITION: community
+      DAGYCHU_SERVICE_ROLE: scheduler
+      INIT_DB_ON_START: "false"
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "3"
+      SCHEDULER_WATCHDOG_INTERVAL_SEC: "${SCHEDULER_WATCHDOG_INTERVAL_SEC:-15}"
+      DATABASE_URL: ${DATABASE_URL}
+      TASK_API_URL: http://api:8000
+      SCHEDULER_POLL_SECONDS: ${SCHEDULER_POLL_SECONDS}
+      SCHEDULER_TOLERANCE_SECONDS: ${SCHEDULER_TOLERANCE_SECONDS}
+      SCHEDULER_IMMINENT_WINDOW_SEC: ${SCHEDULER_IMMINENT_WINDOW_SEC:-90}
+      SCHEDULER_IMMINENT_POLL_SEC: ${SCHEDULER_IMMINENT_POLL_SEC:-1}
+      SCHEDULER_GLOBAL_MAX_ACTIVE_RUNS: ${SCHEDULER_GLOBAL_MAX_ACTIVE_RUNS:-}
+      SCHEDULER_DISPATCH_MAX_RETRIES: ${SCHEDULER_DISPATCH_MAX_RETRIES}
+      SCHEDULER_DISPATCH_BACKOFF_MS: ${SCHEDULER_DISPATCH_BACKOFF_MS}
+      SCHEDULER_LEADER_LOCK_ID: ${SCHEDULER_LEADER_LOCK_ID}
+      SCHEDULER_PENDING_STALE_SEC: ${SCHEDULER_PENDING_STALE_SEC:-120}
+      SCHEDULER_LOCK_SKIP_WARN_THRESHOLD: ${SCHEDULER_LOCK_SKIP_WARN_THRESHOLD:-3}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      RABBITMQ_HTTP_URL: ${RABBITMQ_HTTP_URL:-http://rabbitmq:15672}
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      QUEUE_NAME: ${QUEUE_NAME:-task_queue}
+      QUEUE_ORPHAN_GRACE_SEC: ${QUEUE_ORPHAN_GRACE_SEC:-90}
+      QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK: ${QUEUE_ORPHAN_REPUBLISH_MAX_PER_TICK:-10}
+      # Orphan RUNNING task/job release (no online fleet owner) — used by reconcile-stuck + finalize.
+      ORPHAN_RUNNING_JOB_MAX_AGE_MIN: ${ORPHAN_RUNNING_JOB_MAX_AGE_MIN:-15}
+      TASK_FINALIZE_GRACE_SEC: ${TASK_FINALIZE_GRACE_SEC:-45}
+      EXPECTED_WORKER_CONSUMERS: ${EXPECTED_WORKER_CONSUMERS:-}
+      WORKER_SERVICE_TOKEN: ${WORKER_SERVICE_TOKEN}
+      PROJECT_VARS_SECRET_KEY: "${PROJECT_VARS_SECRET_KEY:-}"
+      DAGYCHU_PUBLIC_BASE_URL: ${DAGYCHU_PUBLIC_BASE_URL:-}
+      MALLOC_ARENA_MAX: "2"
+      MALLOC_TRIM_THRESHOLD_: "131072"
+      SCHEDULER_RECONCILE_JOBS_LIMIT: "${SCHEDULER_RECONCILE_JOBS_LIMIT:-64}"
+      SCHEDULER_RECONCILE_DISPATCHED_LIMIT: "${SCHEDULER_RECONCILE_DISPATCHED_LIMIT:-100}"
+      SCHEDULER_RECONCILE_LOOPS: "${SCHEDULER_RECONCILE_LOOPS:-2}"
+      SCHEDULER_RECONCILE_MEMORY_RELEASE_MIN_EXAMINED: "${SCHEDULER_RECONCILE_MEMORY_RELEASE_MIN_EXAMINED:-10}"
+    volumes:
+      - job_logs:/var/log/job_runs
+      - ./runtime:/srv/runtime:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+  platform_bootstrap:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    restart: "no"
+    command: python -m app.bootstrap.system_pipelines
+    environment:
+      DAGYCHU_EDITION: community
+      DATABASE_URL: ${DATABASE_URL}
+      CORE_API_URL: http://api:8000
+    volumes:
+      - ./dagychu-instance.yaml:/srv/dagychu-instance.yaml:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+  ui_backend:
+    <<: *dagychu-platform
+    image: ghcr.io/raideria-software/dagychu:3.4.1
+    command: python -m uvicorn ui_backend.main:app --host 0.0.0.0 --port 9010 --workers 2
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9010/health', timeout=5)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    environment:
+      DAGYCHU_EDITION: community
+      DAGYCHU_SERVICE_ROLE: ui_backend
+      INIT_DB_ON_START: "false"
+      DB_POOL_SIZE: "3"
+      DB_MAX_OVERFLOW: "2"
+      DB_POOL_TIMEOUT_SEC: "20"
+      DB_STATEMENT_TIMEOUT_MS: "${DB_STATEMENT_TIMEOUT_MS_UI:-8000}"
+      AUTH_RESOLVE_TIMEOUT_SEC: "${AUTH_RESOLVE_TIMEOUT_SEC:-8}"
+      AUTH_SESSION_CACHE_TTL_SEC: "${AUTH_SESSION_CACHE_TTL_SEC:-15}"
+      CORE_API_URL: http://api:8000
+      SCHEDULER_API_URL: http://scheduler:9020
+      JOB_LOG_DIR: /var/log/job_runs
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      REALTIME_EVENTS_ENABLED: "${REALTIME_EVENTS_ENABLED:-true}"
+      TASK_WS_HEARTBEAT_SEC: "${TASK_WS_HEARTBEAT_SEC:-45}"
+      TASK_WS_POLL_FALLBACK_SEC: "${TASK_WS_POLL_FALLBACK_SEC:-30}"
+      RABBITMQ_HTTP_URL: http://rabbitmq:15672
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      QUEUE_NAME: ${QUEUE_NAME:-task_queue}
+      DATABASE_URL: ${DATABASE_URL}
+      AUTH_ENABLED: "${AUTH_ENABLED:-true}"
+      AUTH_MODE: "${AUTH_MODE:-rbac}"
+      UI_ADMIN_TOKEN: "${UI_ADMIN_TOKEN}"
+      WORKER_SERVICE_TOKEN: "${WORKER_SERVICE_TOKEN}"
+      PROJECT_VARS_SECRET_KEY: "${PROJECT_VARS_SECRET_KEY:-}"
+      AUTH_SESSION_IDLE_TTL_HOURS: "${AUTH_SESSION_IDLE_TTL_HOURS:-24}"
+      AUTH_SESSION_MAX_TTL_HOURS: "${AUTH_SESSION_MAX_TTL_HOURS:-720}"
+      AUTH_SESSION_TOUCH_INTERVAL_MIN: "${AUTH_SESSION_TOUCH_INTERVAL_MIN:-5}"
+      CORE_HTTP_TIMEOUT_SEC: "${CORE_HTTP_TIMEOUT_SEC:-60}"
+      CORE_HTTP_LONG_TIMEOUT_SEC: "${CORE_HTTP_LONG_TIMEOUT_SEC:-1800}"
+      EXT_API_ENABLED: "${EXT_API_ENABLED:-false}"
+      UI_INSTANCE_NAME: "${UI_INSTANCE_NAME:-}"
+      DAGYCHU_VERSION: "${DAGYCHU_VERSION:-3.4.1}"
+    volumes:
+      - job_logs:/var/log/job_runs
+      - ./dagychu-instance.yaml:/srv/dagychu-instance.yaml:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      scheduler:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:9010"
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+  job_logs:
+  dagychu_build:

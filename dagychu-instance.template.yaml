@@ -1,0 +1,100 @@
+# =============================================================================
+# Dagychu instance configuration (template)
+# -----------------------------------------------------------------------------
+# Copy to your deployment root (next to .env and docker-compose) as: dagychu-instance.yaml
+# (one file per Dagychu installation — NOT inside a pipeline group root).
+#
+# Per-project runtime: dagychu-config.yaml at each PIPELINE_YAML_DIRS group root.
+# Secrets and infrastructure: .env only (DB, RabbitMQ, tokens, host paths, JOB_EXECUTOR, …).
+# =============================================================================
+
+dagychu_instance_version: 1
+
+# Interactive first-visit tour (Monitoring). Demo builds: true. Pro: false.
+onboarding:
+  enabled: true
+  tour:
+    file: onboarding-tour.yaml
+
+# Monitoring dashboard tabs + Execution map (V2) APIs.
+monitoring:
+  dashboard:
+    screens:
+      overview: true
+      execution_map: true
+      operational: false
+      report: false
+      api_security: false
+  v2:
+    enabled: false
+    ai_enabled: false
+
+# Optional label after product name in the shell (was UI_INSTANCE_NAME).
+# Legal documents (Terms, Privacy, Notices) ship in the image — Settings → Legal.
+# Optional ui.legal substitutes {{LEGAL_ENTITY}} etc. if those tokens appear in the markdown.
+# ui:
+#   instance_label: Staging
+#   legal:
+#     entity: "Acme Ltd"
+#     privacy_contact: "privacy@example.com"
+#     governing_law: "England and Wales"
+#     effective_date: "2026-08-14"
+#   branding:
+#     hide_product_name: false   # true → logo + compact_letter instead of product name
+#     hide_vendor_footer: false  # hide Raideria footer line
+#     hide_tagline: false        # hide sidebar tagline under the title
+#     compact_letter: "D"
+#   nav:
+#     screens:                   # false hides a main nav section
+#       dashboard: true
+#       my_dashboards: true
+#       pipelines: true
+#       configuration: true
+#       execution: true
+#       logs: true
+#       system: true
+#       scheduler: true
+#       guide: true
+#       notifications: true
+#       admin: true
+#       settings: true
+
+# Require connected + validated projects before runs (was PROJECT_EXECUTION_GATE_ENABLED).
+execution:
+  project_execution_gate_enabled: true
+
+# External /ext/* API: async submit/poll + sync run/wait. Secrets stay in .env; policy here.
+external_api:
+  enabled: true
+  allowed_users:
+    - agent_client
+  rate_limits:
+    async:
+      per_minute: 120
+    sync:
+      per_minute: 20
+      max_concurrent_waits: 10
+  sync:
+    default_wait_timeout_sec: 120
+    max_wait_timeout_sec: 300
+    default_poll_interval_sec: 2
+    max_poll_interval_sec: 30
+  security:
+    retention_days: 7
+    login_retention_days: 30
+
+bootstrap:
+  # Overview is refreshed in-core by the worker. Do not schedule overview_monitoring_v1 here.
+  enabled: false
+  wait_api_timeout_sec: 120
+  defaults:
+    schedule_type: cron
+    timezone: UTC
+    scheduler_enabled: true
+    max_concurrent_runs: 1
+  pipelines: []
+
+# --- Typically stay in .env (infrastructure / secrets) ---
+# DATABASE_URL, RABBITMQ_*, AUTH_*, UI_ADMIN_TOKEN, WORKER_SERVICE_TOKEN
+# PIPELINE_YAML_DIRS, JOB_EXECUTOR, DAGYCHU_BUILD_ROOT, JOB_APP_ROOT, scheduler poll intervals
+# EXT_API_* — legacy fallback when external_api is omitted from this file (see external_api above)
