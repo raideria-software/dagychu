@@ -81,7 +81,7 @@ The stack uses `docker-compose.yml` (pinned `ghcr.io/raideria-software/dagychu:<
 docker pull ghcr.io/raideria-software/dagychu:3.4.1
 ```
 
-Demo pipelines are seeded under `runtime/demo/` on first install. Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
+Demo pipelines are seeded under `runtime/demo/` on first install. Runs require a **connected** project: open **Administration → Projects**, validate and connect the group before the first run (`execution.project_execution_gate_enabled` in `dagychu-instance.yaml`). Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
 
 After install, use `./update.sh` for a newer pack/image tag. Do **not** run `./install.sh` again on an existing deployment (it regenerates secrets).
 

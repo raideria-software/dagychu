@@ -1,60 +1,78 @@
-# Dagychu Community edition — default instance profile (shipped in client-community package).
-dagychu_instance_version: 1
+# Dagychu instance configuration (non-secret). Same deployment root as .env — not inside a pipeline group.
+# Project runtime uses dagychu-config.yaml per group. Secrets stay in .env.
+#
+# One file for every edition. Community and Enterprise images ship this same profile; the running
+# edition (DAGYCHU_EDITION) decides which capabilities are actually served, so upgrading Community →
+# Enterprise unlocks the full product without editing this file.
+dagychu_instance_version: 2
 
+# Demo/dev: true. Pro deployments: set false in dagychu-instance.yaml.
+# Community ignores the tour (Enterprise capability).
 onboarding:
-  enabled: false
+  enabled: true
   tour:
     file: onboarding-tour.yaml
 
+# Monitoring UI: which dashboard tabs are requested; V2 powers Execution map.
+# Requests are intersected with edition capabilities — Community serves the operational dashboard,
+# Enterprise adds Overview, Execution map and API Security.
+# Note: operational / report screens were removed (Chart Platform). Keys may remain for upgrade-compat.
 monitoring:
   dashboard:
     screens:
       overview: true
-      execution_map: false
+      execution_map: true
       operational: false
       report: false
-      api_security: false
+      api_security: true
   v2:
-    enabled: false
-    ai_enabled: false
+    enabled: true
+    ai_enabled: true
 
-ui:
-  # White-label: hide product/vendor text in the shell (logo + compact letter remain).
-  branding:
-    hide_product_name: false
-    hide_vendor_footer: false
-    hide_tagline: false
-    compact_letter: "D"
-  # Legal documents (Terms, Privacy, Notices) ship in the image — Settings → Legal.
-  # Optional ui.legal substitutes {{LEGAL_ENTITY}} if those tokens appear in the markdown.
-  # legal:
-  #   entity: "Acme Ltd"
-  #   privacy_contact: "privacy@example.com"
-  #   governing_law: "England and Wales"
-  #   effective_date: "2026-08-14"
-  # Hide nav sections that are not needed for your deployment (restart after edit).
-  nav:
-    screens:
-      dashboard: true
-      my_dashboards: false
-      pipelines: true
-      configuration: true
-      execution: true
-      logs: true
-      system: true
-      scheduler: true
-      guide: true
-      # In-app feed + header console (Slack/Telegram delivery remains Enterprise-only).
-      notifications: true
-      admin: true
-      settings: true
+# Optional label in the shell after the product name (was UI_INSTANCE_NAME in .env).
+# Legal documents (Terms, Privacy, Notices) ship in the image — Settings → Legal.
+# Optional ui.legal substitutes {{LEGAL_ENTITY}} and similar tokens if present in the markdown.
+# Nav sections default to visible; Enterprise-only sections stay hidden in Community regardless.
+# ui:
+#   instance_label: Production
+#   legal:
+#     entity: "Acme Ltd"
+#     privacy_contact: "privacy@example.com"
+#     governing_law: "England and Wales"
+#     effective_date: "2026-08-14"
 
+# When true, only connected + validated pipeline groups may run tasks (was PROJECT_EXECUTION_GATE_ENABLED).
+# Connect projects in Administration → Projects before the first run.
 execution:
-  project_execution_gate_enabled: false
+  project_execution_gate_enabled: true
 
+# External /ext/* API policy. Community blocks /ext/* by edition; these values apply on Enterprise.
 external_api:
-  enabled: false
+  enabled: true
+  allowed_users:
+    - agent_client
+  rate_limits:
+    async:
+      per_minute: 120
+    sync:
+      per_minute: 20
+      max_concurrent_waits: 10
+  sync:
+    default_wait_timeout_sec: 120
+    max_wait_timeout_sec: 300
+    default_poll_interval_sec: 2
+    max_poll_interval_sec: 30
+  security:
+    retention_days: 7
+    login_retention_days: 30
 
 bootstrap:
+  # Overview is refreshed in-core by the worker. Do not schedule overview_monitoring_v1 here.
   enabled: false
+  wait_api_timeout_sec: 120
+  defaults:
+    schedule_type: cron
+    timezone: UTC
+    scheduler_enabled: true
+    max_concurrent_runs: 1
   pipelines: []

@@ -4,19 +4,26 @@
 # Copy to your deployment root (next to .env and docker-compose) as: dagychu-instance.yaml
 # (one file per Dagychu installation — NOT inside a pipeline group root).
 #
+# One file for every edition: the running edition (DAGYCHU_EDITION) decides which capabilities are
+# served, so a Community deployment that upgrades to Enterprise gets the full product without
+# editing this file.
+#
 # Per-project runtime: dagychu-config.yaml at each PIPELINE_YAML_DIRS group root.
 # Secrets and infrastructure: .env only (DB, RabbitMQ, tokens, host paths, JOB_EXECUTOR, …).
 # =============================================================================
 
-dagychu_instance_version: 1
+# Version 2 = edition-aware monitoring flags. Files still declaring version 1 keep working; their
+# monitoring section is treated as legacy and replaced by edition capabilities on upgrade.
+dagychu_instance_version: 2
 
-# Interactive first-visit tour (Monitoring). Demo builds: true. Pro: false.
+# Interactive first-visit tour (Monitoring). Enterprise capability; ignored in Community.
 onboarding:
   enabled: true
   tour:
     file: onboarding-tour.yaml
 
 # Monitoring dashboard tabs + Execution map (V2) APIs.
+# Community serves the operational dashboard; Enterprise adds Overview, Execution map, API Security.
 monitoring:
   dashboard:
     screens:
@@ -24,10 +31,10 @@ monitoring:
       execution_map: true
       operational: false
       report: false
-      api_security: false
+      api_security: true
   v2:
-    enabled: false
-    ai_enabled: false
+    enabled: true
+    ai_enabled: true
 
 # Optional label after product name in the shell (was UI_INSTANCE_NAME).
 # Legal documents (Terms, Privacy, Notices) ship in the image — Settings → Legal.
@@ -47,7 +54,7 @@ monitoring:
 #   nav:
 #     screens:                   # false hides a main nav section
 #       dashboard: true
-#       my_dashboards: true
+#       my_dashboards: true      # Enterprise capability; hidden in Community
 #       pipelines: true
 #       configuration: true
 #       execution: true
@@ -60,10 +67,12 @@ monitoring:
 #       settings: true
 
 # Require connected + validated projects before runs (was PROJECT_EXECUTION_GATE_ENABLED).
+# Connect projects in Administration → Projects before the first run.
 execution:
   project_execution_gate_enabled: true
 
 # External /ext/* API: async submit/poll + sync run/wait. Secrets stay in .env; policy here.
+# Enterprise capability — Community blocks /ext/* regardless of this section.
 external_api:
   enabled: true
   allowed_users:

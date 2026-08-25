@@ -70,6 +70,9 @@ services:
     environment:
       APP_ENV: prod
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DAGYCHU_SERVICE_ROLE: api
       INIT_DB_ON_START: "true"
       # verify = fast check when schema exists; empty/fresh DB auto-falls back to migrate.
@@ -138,6 +141,9 @@ services:
     environment:
       APP_ENV: prod
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DAGYCHU_SERVICE_ROLE: worker
       INIT_DB_ON_START: "false"
       # Auto-sized from JOB_CONCURRENCY when unset (see db_connection_budget.scale_worker_pool).
@@ -210,6 +216,9 @@ services:
     environment:
       APP_ENV: prod
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DAGYCHU_SERVICE_ROLE: worker
       INIT_DB_ON_START: "false"
       # Auto-sized from JOB_CONCURRENCY when unset (see db_connection_budget.scale_worker_pool).
@@ -289,6 +298,9 @@ services:
       start_period: 20s
     environment:
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DAGYCHU_SERVICE_ROLE: scheduler
       INIT_DB_ON_START: "false"
       DB_POOL_SIZE: "5"
@@ -342,6 +354,9 @@ services:
     command: python -m app.bootstrap.system_pipelines
     environment:
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DATABASE_URL: ${DATABASE_URL}
       CORE_API_URL: http://api:8000
     volumes:
@@ -369,6 +384,9 @@ services:
       start_period: 20s
     environment:
       DAGYCHU_EDITION: community
+      HISTORY_RETENTION_ENABLED: "true"
+      JOB_RUN_RETENTION_DAYS: "2"
+      WORKER_METRIC_SAMPLE_RETENTION_HOURS: "36"
       DAGYCHU_SERVICE_ROLE: ui_backend
       INIT_DB_ON_START: "false"
       DB_POOL_SIZE: "3"
