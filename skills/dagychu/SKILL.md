@@ -3,9 +3,8 @@ name: dagychu
 description: >-
   Guides Dagychu pipeline and job development on a deployed instance: job scripts
   with model.yaml, pipeline YAML, dagychu-config.yaml, project setup, and
-  debugging. For demo pipelines, also requires CTO-facing English documentation
-  (what it is, why, how to use in the customer's company). Use when creating or
-  changing jobs, pipelines, demo docs, or project config.
+  debugging. Use when creating or changing jobs, pipelines, or project config.
+  Optional best-practice add-ons: demo CTO docs and data-platform (DQ/SQL) patterns.
 ---
 
 # Dagychu — jobs, pipelines, projects
@@ -22,9 +21,9 @@ Skill for **operators and pipeline authors** extending a Dagychu deployment. Can
 | **Inputs** | What goes in task `initial_input_json`? Per-job constants? Upstream job outputs? Need `merge` + `priority`? |
 | **Outputs** | Which keys does each job expose in `outputs:`? What should appear in UI **News summary** (`news_chat`)? |
 | **Failure** | Empty data → `raise` or controlled `sys.exit(1)`? Any job must run after upstream failure (`run_on_upstream_failure`)? |
-| **DQ / SQL** (data projects) | Source tables, target mart, Jinja params (`month_offset` etc.), pre/post DQ files? |
-| **Gate** | Is `PROJECT_EXECUTION_GATE_ENABLED=true`? Has the group been **Connected** in Admin → Projects? |
-| **Demo doc** (demo repo) | Business outcome for the CTO? Prerequisites in the customer's stack? Who runs it, what inputs, what consumers? Demo vs production scope? |
+| **Gate** | Is `execution.project_execution_gate_enabled` true in `dagychu-instance.yaml` (legacy env `PROJECT_EXECUTION_GATE_ENABLED` still works)? Has the group been **Connected** in Admin → Projects? |
+| **DQ / SQL** (best practice, data projects) | Source tables, target mart, Jinja params (`month_offset` etc.), pre/post DQ files? Skip unless the user has an analytics/ETL layout. |
+| **Demo doc** (best practice, demo catalogue) | Only when publishing a customer-facing demo pipeline: business outcome, prerequisites, who runs it, demo vs production scope. |
 
 If unclear, read the user's `PIPELINE_YAML_DIRS`, `runtime/` tree, and `.env` before proposing paths.
 
@@ -48,7 +47,7 @@ If unclear, read the user's `PIPELINE_YAML_DIRS`, `runtime/` tree, and `.env` be
 ```
 - [ ] Define group in PIPELINE_YAML_DIRS (e.g. default=.)
 - [ ] Create <group_root>/pipelines/ and jobs tree
-- [ ] Copy examples/dagychu-config.template.yaml → <group_root>/dagychu-config.yaml
+- [ ] Copy examples/dagychu-config.yaml → <group_root>/dagychu-config.yaml
 - [ ] Set stack.python + dependencies.python (requirements path)
 - [ ] Admin → Projects → Refresh validation → Connect
 - [ ] Place at least one valid pipeline YAML; wait for disk sync (~30s) or restart api
@@ -79,9 +78,9 @@ Details: [jobs-and-model.md](jobs-and-model.md)
 
 Details: [pipeline-yaml.md](pipeline-yaml.md)
 
-### D) Demo pipeline — CTO documentation (required in demo catalogue)
+### D) Demo pipeline — CTO documentation (best practice)
 
-For every new `pipelines/<pipeline_name>.yaml` in a **customer-facing demo** repo:
+**Optional.** Use when publishing a **customer-facing demo** pipeline catalogue (not required for every internal job).
 
 ```
 - [ ] Create docs/pipelines/<pipeline_name>/README.md (English, CTO audience)
@@ -93,9 +92,9 @@ For every new `pipelines/<pipeline_name>.yaml` in a **customer-facing demo** rep
 
 Details: [demo-pipeline-docs.md](demo-pipeline-docs.md)
 
-### E) Data-platform pipeline (entrance + DQ + SQL)
+### E) Data-platform pipeline — entrance + DQ + SQL (best practice)
 
-For analytics/ETL projects mounted as a Dagychu group (jobs under `utils/`, SQL in `data_transformation/`):
+**Optional.** Pattern for analytics/ETL projects that already use `utils/`, `dq/`, and `data_transformation/` job trees. Skip for ordinary Python/Bash automation.
 
 1. `pipeline_params_entrance` — normalize `initial_input_json.params` once.
 2. Pre-DQ per source table (`utils/dq_runner`).
@@ -163,7 +162,7 @@ dependencies:
       path: requirements.txt
 ```
 
-Template: `examples/dagychu-config.yaml` (or `examples/dagychu-config.template.yaml` in source repos).
+Template: `examples/dagychu-config.yaml` in the client package (source repos may also have `examples/dagychu-config.template.yaml`).
 
 ---
 
@@ -175,11 +174,15 @@ Template: `examples/dagychu-config.yaml` (or `examples/dagychu-config.template.y
 | [pipeline-yaml.md](pipeline-yaml.md) | merge, retry, launch_order, orchestration |
 | [project-setup.md](project-setup.md) | PIPELINE_YAML_DIRS, instance vs project config |
 | [troubleshooting.md](troubleshooting.md) | frequent failures and fixes |
-| [demo-pipeline-docs.md](demo-pipeline-docs.md) | CTO-facing doc template per demo pipeline |
+| [demo-pipeline-docs.md](demo-pipeline-docs.md) | **Best practice** — CTO-facing doc template per demo pipeline |
 | `docs/pipelines/README.md` | demo catalogue index (in demo repos) |
-| `examples/pipelines/README.md` | demo patterns (source repo) |
+| `examples/pipelines/README.md` | demo patterns (in this package) |
 | Settings → Documentation → Guide | operator guide (in the image) |
 | Settings → Documentation → Operations | maintenance and Docker executor |
+
+## Out of scope for this skill
+
+Platform/product development (API, UI, workers, edition gating) is **not** covered here — that lives in the product source tree under `.cursor/skills/`. For operators: scheduling UI, Monitoring, and External API usage — see **Settings → Documentation** and `examples/external_client/` in the client package.
 
 ---
 
@@ -190,5 +193,5 @@ Template: `examples/dagychu-config.yaml` (or `examples/dagychu-config.template.y
 - [ ] Job script + `model.yaml` aligned with stdout keys and `outputs:`
 - [ ] Pipeline YAML validated in UI; deps acyclic; paths exist under group root
 - [ ] `initial_input_json` shape documented (YAML header comment or task template)
-- [ ] **Demo catalogue:** `docs/pipelines/<pipeline_name>/README.md` complete and indexed
+- [ ] **Best practice — demo catalogue only:** `docs/pipelines/<pipeline_name>/README.md` complete and indexed
 - [ ] User told how to deploy (`runtime/` rsync/git pull) and refresh disk sync

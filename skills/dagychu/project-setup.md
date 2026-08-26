@@ -86,7 +86,7 @@ When `JOB_EXECUTOR=docker`:
 2. Fix validation errors shown in UI (Python version, requirements path, unsafe volume paths).
 3. **Refresh validation**.
 4. **Connect** — triggers runtime image build when using docker executor.
-5. If `PROJECT_EXECUTION_GATE_ENABLED=true`, disconnected/invalid groups **cannot run tasks**.
+5. If `execution.project_execution_gate_enabled: true` in `dagychu-instance.yaml` (legacy env `PROJECT_EXECUTION_GATE_ENABLED`), disconnected/invalid groups **cannot run tasks**.
 
 Platform group `dagychu_system` ships in the image; connect once after install. Do not bind-mount empty `./system` over `/srv/system`.
 

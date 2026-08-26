@@ -22,7 +22,7 @@ https://raideria.com
 
 A useful security report should include:
 
-- affected Dagychu version or commit;
+- affected Dagychu version or release;
 - affected component;
 - deployment assumptions required to reproduce the issue;
 - clear reproduction steps;
@@ -92,6 +92,8 @@ At minimum:
 
 ## Scope
 
-This policy applies to security issues in Dagychu Community code and official Community release artifacts maintained by Raideria LLC.
+This policy applies to security issues in official Dagychu Community release artifacts and the public Community distribution repository maintained by Raideria LLC.
 
-Issues in third-party applications, infrastructure, operating systems, or independently modified Dagychu distributions should normally be reported to their respective maintainers unless the issue is caused by Dagychu itself.
+The Dagychu application source code is maintained separately and is not published in this repository. A vulnerability in an official Community runtime image is still in scope even when the affected application component is not present as source code in the public repository.
+
+Issues in third-party applications, infrastructure, operating systems, or independently modified deployment assets should normally be reported to their respective maintainers unless the issue is caused by Dagychu itself.

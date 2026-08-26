@@ -13,7 +13,7 @@
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| Cannot create task | `PROJECT_EXECUTION_GATE_ENABLED=true` and project not connected | Admin → Projects → validate → **Connect** |
+| Cannot create task | Gate on (`execution.project_execution_gate_enabled` / legacy `PROJECT_EXECUTION_GATE_ENABLED`) and project not connected | Admin → Projects → validate → **Connect** |
 | Validation failed | Bad `dagychu-config.yaml` | Fix `stack.python`, `dependencies.python.path`, volumes |
 | Docker build failed | Missing requirements, socket, bad path | Check api logs; verify Docker socket; paths inside project tree |
 
@@ -66,11 +66,14 @@ Browser console WebSocket failures with working HTTP: reverse proxy must forward
 
 ## External API (`/ext/tasks`)
 
-| Symptom | Fix |
-|---------|-----|
-| 401/403 | Bearer token; check `external_api` in `dagychu-instance.yaml` |
-| 408 on sync run | Increase timeout or use async submit + poll |
-| Callback not received | Check URL, HMAC, firewall; see `examples/external_client/` |
+Community builds **disable** `/ext/*` by edition even when YAML lists `external_api.enabled: true`. Enterprise applies `dagychu-instance.yaml` → `external_api`.
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| 404 / not available | Community edition | Use UI/API task create, or Enterprise with External API enabled |
+| 401/403 | Bearer token; `external_api.allowed_users` | Check token user and instance YAML |
+| 408 on sync run | Wait timeout | Increase timeout or use async submit + poll |
+| Callback not received | URL, HMAC, firewall | See `examples/external_client/` |
 
 ## Debug workflow
 

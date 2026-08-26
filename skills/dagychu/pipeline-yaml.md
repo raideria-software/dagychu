@@ -98,9 +98,9 @@ Demo: `examples/pipelines/demo_retry_policy_even_odd.yaml`.
 
 When multiple jobs have `deps: []`, the platform may inject `__dagychu_entrance` so the graph has one formal entry. Do not name your jobs `__dagychu_entrance`.
 
-## Production orchestration (entrance, DQ, SQL)
+## Production orchestration (entrance, DQ, SQL) — best practice
 
-Pattern for **analytics/data projects** (jobs under `utils/`, SQL in `data_transformation/`):
+**Optional** pattern for **analytics/data projects** that already ship jobs under `utils/`, SQL in `data_transformation/`, and DQ files. Ordinary Python/Bash pipelines do **not** need this section.
 
 ```mermaid
 flowchart TD

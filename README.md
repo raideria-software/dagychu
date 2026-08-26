@@ -4,7 +4,7 @@
 
 Dagychu helps engineering and data teams define repeatable workflows, run them on their own infrastructure, and operate executions from one place — without moving workload code into a hosted orchestration service.
 
-> Dagychu Community is the open-source edition of Dagychu, developed and maintained by Raideria LLC. Licensed under [Apache License 2.0](LICENSE.md).
+Dagychu Community is the **free self-hosted edition of Dagychu**, developed and maintained by Raideria LLC. It is distributed as versioned container images together with a public install/distribution repository.
 
 ## Why Dagychu
 
@@ -92,13 +92,13 @@ Use explicit version tags in production rather than `latest`. Current product li
 - `install.sh` / `update.sh` / `reload-projects.sh`
 - `docker-compose.yml`, `.env.example`, `dagychu-instance.yaml`
 - `examples/`, `skills/`
-- Apache `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, `CONTRIBUTING.md`
+- `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, `CONTRIBUTING.md`
 
 This pack does not include a local development compose or an application source tree. You run Dagychu from the GHCR image via `docker-compose.yml`.
 
 ## Community and Enterprise
 
-Dagychu Community is the Apache-licensed self-hosted distribution.
+Dagychu Community is the free self-hosted edition of Dagychu. The application runs from versioned Dagychu runtime images; the application source code is maintained by Raideria and is not published in this repository.
 
 Raideria also develops commercial Dagychu capabilities (Enterprise) for organizations with additional operational, security, governance, or support requirements.
 
@@ -120,17 +120,40 @@ Before exposing Dagychu outside a trusted network:
 
 Do not disclose vulnerabilities in public GitHub issues. See [SECURITY.md](SECURITY.md).
 
+## Product telemetry
+
+Dagychu includes optional product telemetry that helps Raideria understand product adoption and usage.
+
+Community installations have product telemetry enabled by default. Enterprise installations have it disabled by default. An administrator can review and change the current setting under **Administration → Product Telemetry**.
+
+When enabled, Dagychu sends approximately once every 24 hours:
+
+- a randomly generated installation identifier;
+- Dagychu version and edition;
+- the aggregate number of runs during the previous 24 hours;
+- the aggregate number of active pipelines during the previous 24 hours.
+
+Raideria may derive an approximate country from the network address used to deliver the request. The source IP address is not stored as part of the product telemetry dataset.
+
+Dagychu does **not** send workflow code, pipeline or job names, logs, execution parameters, secrets, usernames, organization names, hostnames, database metadata, or infrastructure identifiers.
+
+Telemetry is sent to `https://telemetry.raideria.com` and can be disabled at any time.
+
+See **Administration → Product Telemetry** in Dagychu for the current telemetry status and the exact values that may be sent by the installation.
+
 ## Documentation
 
 - This README and [CLIENT_SETUP.md](CLIENT_SETUP.md)
 - In a running instance: **Settings → Documentation** and **Settings → Legal**
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
-## License
+## Licensing and distribution
 
-Dagychu Community is licensed under the [Apache License 2.0](LICENSE.md).
+This public repository contains installation assets, documentation, examples, skills, configuration templates, and related release materials. Materials identified as Apache-licensed are provided under the [Apache License 2.0](LICENSE.md).
 
-The software license covers the source code and other materials distributed under that license. It does **not** grant rights to use Raideria or Dagychu trademarks except as permitted by applicable law or the project's trademark policy.
+The Dagychu application source code is not published in this repository. The presence of the Apache license in this repository does not by itself license unpublished Dagychu application source code. Runtime images and other separately distributed components are governed by the terms applicable to those release artifacts.
+
+The licenses for repository materials do **not** grant rights to use Raideria or Dagychu trademarks except as permitted by applicable law or the project trademark policy.
 
 See [TRADEMARKS.md](TRADEMARKS.md) and [NOTICE.md](NOTICE.md).
 

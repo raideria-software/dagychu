@@ -1,6 +1,6 @@
 # Dagychu Trademark Policy
 
-This policy explains the relationship between the open-source Dagychu Community software and the names, logos, and branding associated with Dagychu and Raideria.
+This policy explains the relationship between Dagychu Community distribution materials and the names, logos, and branding associated with Dagychu and Raideria.
 
 ## Ownership
 
@@ -8,37 +8,35 @@ This policy explains the relationship between the open-source Dagychu Community 
 
 The names **Dagychu** and **Raideria**, the Dagychu logo, the Raideria logo, and related product branding are owned by Raideria LLC to the extent protected under applicable trademark and unfair-competition law.
 
-Publication of Dagychu Community source code does not transfer ownership of these names or branding.
+Publication of Dagychu Community installation assets, documentation, examples, release materials, or other public repository content does not transfer ownership of these names or branding.
 
-## Relationship to the software license
+## Relationship to repository licenses
 
-Dagychu Community source code is distributed under the Apache License 2.0.
+Some materials in the Dagychu Community public distribution repository are made available under the Apache License 2.0. The Apache License grants rights in the materials to which it applies, but it does **not** grant a general trademark license.
 
-The Apache License grants broad rights to use, modify, and redistribute the licensed software. It does **not** grant a general trademark license.
-
-Nothing in the Dagychu Community software license gives permission to represent an independent distribution, fork, hosted service, commercial product, or company as being officially produced, sponsored, certified, endorsed, or operated by Raideria LLC.
+The Dagychu application source code is not published in this repository. Nothing in the license for public repository materials grants permission to represent an independent distribution, hosted service, commercial product, or company as being officially produced, sponsored, certified, endorsed, or operated by Raideria LLC.
 
 ## Permitted descriptive use
 
-You may use the Dagychu name when reasonably necessary to truthfully describe the origin of the software or your relationship to it.
+You may use the Dagychu name when reasonably necessary to truthfully describe Dagychu, compatibility with Dagychu, or your relationship to the product.
 
 Examples of normally acceptable descriptive use include:
 
-- "Built with Dagychu"
+- "Built for Dagychu"
 - "Compatible with Dagychu"
-- "Based on Dagychu Community"
-- "A fork of Dagychu Community"
 - "Integration for Dagychu"
+- "Deployment tooling for Dagychu Community"
+- "Documentation for Dagychu"
 
 Such use must not create a reasonable impression that your product or organization is an official Raideria or Dagychu offering.
 
-## Forks and modified distributions
+## Modified repository materials and independent distributions
 
-If you redistribute a materially modified version of Dagychu Community, you must comply with the Apache License 2.0.
+If you redistribute or modify materials from this public repository, you must comply with the license that applies to those materials.
 
-You should use a distinct product name for a fork or independent distribution when continued use of the Dagychu name could create confusion about its source, maintenance, or endorsement.
+If you create an independent package, deployment bundle, integration, or service based on public Dagychu Community materials, use a distinct name when continued use of the Dagychu name could create confusion about its source, maintenance, or endorsement.
 
-You may accurately state that the software is based on or derived from Dagychu Community.
+You may accurately state that your work is designed for, compatible with, or based on publicly distributed Dagychu Community materials where that description is truthful.
 
 ## Uses requiring permission
 
@@ -66,4 +64,4 @@ https://raideria.com
 
 ---
 
-This policy governs project branding and is separate from the Apache License 2.0 that applies to Dagychu Community source code.
+This policy governs project branding and is separate from the licenses that apply to specific materials in the Dagychu Community public distribution repository.

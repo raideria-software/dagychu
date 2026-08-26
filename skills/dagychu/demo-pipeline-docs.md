@@ -1,11 +1,13 @@
-# Demo pipeline documentation (CTO-facing)
+# Demo pipeline documentation (CTO-facing) — best practice
 
-Every **demo pipeline** in this repository must ship with **English documentation** that a CTO (or engineering lead) can read without opening Python or YAML. The goal: explain **what it is**, **why it exists**, and **how to adopt it inside their company**.
+**Optional.** Use when you publish a **customer-facing demo** pipeline catalogue. Not required for routine jobs on a customer deployment.
+
+Every **demo pipeline** in a demo catalogue should ship with **English documentation** that a CTO (or engineering lead) can read without opening Python or YAML. The goal: explain **what it is**, **why it exists**, and **how to adopt it inside their company**.
 
 ## When this applies
 
-- **Required** for each new pipeline under `pipelines/*.yaml` in the **dagychu demo** repo and any customer-facing demo catalogue.
-- **Optional** for internal-only or throwaway experiments (mark as `draft` in doc frontmatter).
+- **Best practice / required** for each new pipeline under `pipelines/*.yaml` in a **dagychu demo** catalogue repo.
+- **Skip** for internal-only or throwaway experiments (or mark as `draft` in doc frontmatter).
 
 ## File layout
 

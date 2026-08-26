@@ -76,3 +76,9 @@ bootstrap:
     scheduler_enabled: true
     max_concurrent_runs: 1
   pipelines: []
+
+# Product telemetry (optional). Omit `enabled` to use the edition default:
+# Community default-on, Enterprise default-off. Do not force enabled: true in the shared profile.
+# ENV DAGYCHU_TELEMETRY_ENABLED overrides YAML and the Admin UI preference.
+# telemetry:
+#   enabled: true

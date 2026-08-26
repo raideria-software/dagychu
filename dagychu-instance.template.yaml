@@ -103,6 +103,12 @@ bootstrap:
     max_concurrent_runs: 1
   pipelines: []
 
+# Product telemetry (optional). Omit `enabled` to use the edition default:
+# Community default-on, Enterprise default-off. Do not force enabled: true here — that would
+# turn Enterprise on. ENV DAGYCHU_TELEMETRY_ENABLED overrides YAML and the Admin UI preference.
+# telemetry:
+#   enabled: true
+
 # --- Typically stay in .env (infrastructure / secrets) ---
 # DATABASE_URL, RABBITMQ_*, AUTH_*, UI_ADMIN_TOKEN, WORKER_SERVICE_TOKEN
 # PIPELINE_YAML_DIRS, JOB_EXECUTOR, DAGYCHU_BUILD_ROOT, JOB_APP_ROOT, scheduler poll intervals
