@@ -165,7 +165,7 @@ The public GitHub organization and repository are distribution and collaboration
 
 ## Links
 
-- **Website:** https://raideria.com/dagychu
+- **Website:** https://software.raideria.com/dagychu
 - **Raideria:** https://raideria.com
 - **GitHub organization:** https://github.com/Raideria-Software
 
