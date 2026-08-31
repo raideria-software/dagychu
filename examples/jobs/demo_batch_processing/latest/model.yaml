@@ -1,0 +1,22 @@
+template:
+  total_items: 500
+  batch_size: 50
+input_schema:
+  type: object
+  properties:
+    total_items:
+      type: integer
+      minimum: 1
+    batch_size:
+      type: integer
+      minimum: 1
+output_schema:
+  type: object
+  required: [total_processed, batches, status]
+  properties:
+    total_processed:
+      type: integer
+    batches:
+      type: integer
+    status:
+      type: string

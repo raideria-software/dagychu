@@ -1,0 +1,22 @@
+template:
+  dataset_name: customer_profiles
+  rows_count: 250
+input_schema:
+  type: object
+  properties:
+    dataset_name:
+      type: string
+    rows_count:
+      type: integer
+output_schema:
+  type: object
+  required: [dataset, rows_checked, quality_score_pct, status]
+  properties:
+    dataset:
+      type: string
+    rows_checked:
+      type: integer
+    quality_score_pct:
+      type: number
+    status:
+      type: string

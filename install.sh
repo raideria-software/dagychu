@@ -161,6 +161,36 @@ echo "Created fresh ${ENV_FILE} from ${ENV_EXAMPLE_FILE}." >&2
 python3 "${ROOT_DIR}/scripts/generate_env.py" --env "${ROOT_DIR}/${ENV_FILE}" --root "${ROOT_DIR}" --edition "$(pack_edition)"
 echo "Generated passwords, tokens, and default projects in ${ENV_FILE}." >&2
 
+env_set_value() {
+  local key="$1"
+  local value="$2"
+  python3 - "$ENV_FILE" "$key" "$value" <<'PY'
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+key = sys.argv[2]
+new_value = sys.argv[3]
+
+lines = env_path.read_text(encoding="utf-8").splitlines()
+updated = False
+for idx, raw in enumerate(lines):
+    stripped = raw.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw:
+        continue
+    k, _ = raw.split("=", 1)
+    if k.strip() == key:
+        lines[idx] = f"{key}={new_value}"
+        updated = True
+        break
+
+if not updated:
+    lines.append(f"{key}={new_value}")
+
+env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+}
+
 env_set_if_empty() {
   local key="$1"
   local value="$2"
@@ -334,6 +364,49 @@ echo "" >&2
 echo "You can inspect or edit those files now (another terminal), then confirm below." >&2
 echo "--------------------------------------------------------------------" >&2
 
+prompt_worker_replicas() {
+  if [[ -n "${DAGYCHU_INSTALL_ASSUME_YES:-}" ]]; then
+    return 0
+  fi
+  if [[ ! -t 0 ]] && [[ ! -t /dev/tty ]]; then
+    return 0
+  fi
+
+  local current_replicas
+  current_replicas="$(env_get WORKER_REPLICAS)"
+  [[ -z "${current_replicas}" ]] && current_replicas="1"
+
+  echo "" >&2
+  echo "--------------------------------------------------------------------" >&2
+  echo "Worker scaling configuration:" >&2
+  echo "Each worker process executes one task (pipeline run) at a time from RabbitMQ." >&2
+  echo "To estimate sizing, base your count on expected concurrent TASKS (pipelines)," >&2
+  echo "not individual jobs (e.g. 5 concurrent tasks → 5 workers)." >&2
+  echo "Default value in .env is 1." >&2
+  echo "Note: A dedicated 'worker_deadline_reserve' container is always created" >&2
+  echo "separately in addition to this number for SLA / deadline reliability." >&2
+  echo "--------------------------------------------------------------------" >&2
+
+  local input_replicas=""
+  if [[ -t /dev/tty ]]; then
+    read -r -p "How many worker processes (WORKER_REPLICAS) to create? [${current_replicas}]: " input_replicas </dev/tty
+  else
+    read -r -p "How many worker processes (WORKER_REPLICAS) to create? [${current_replicas}]: " input_replicas
+  fi
+
+  input_replicas="$(echo "${input_replicas}" | tr -d '[:space:]')"
+  if [[ -z "${input_replicas}" ]]; then
+    input_replicas="${current_replicas}"
+  fi
+
+  if [[ "${input_replicas}" =~ ^[0-9]+$ ]] && [[ "${input_replicas}" -ge 1 ]]; then
+    env_set_value "WORKER_REPLICAS" "${input_replicas}"
+    echo "Configured WORKER_REPLICAS=${input_replicas} in ${ENV_FILE}." >&2
+  else
+    echo "Invalid input '${input_replicas}', keeping default WORKER_REPLICAS=${current_replicas}." >&2
+  fi
+}
+
 confirm_start() {
   if [[ -n "${DAGYCHU_INSTALL_ASSUME_YES:-}" ]]; then
     echo "DAGYCHU_INSTALL_ASSUME_YES is set; starting without prompt." >&2
@@ -357,6 +430,7 @@ confirm_start() {
   fi
 }
 
+prompt_worker_replicas
 confirm_start
 
 echo "Pulling images..." >&2

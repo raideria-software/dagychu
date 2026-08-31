@@ -1,0 +1,23 @@
+template:
+  date: "2026-08-31"
+  count: 50
+  seed: 101
+input_schema:
+  type: object
+  properties:
+    date:
+      type: string
+    count:
+      type: integer
+    seed:
+      type: integer
+output_schema:
+  type: object
+  required: [orders_raw, count, status]
+  properties:
+    orders_raw:
+      type: array
+    count:
+      type: integer
+    status:
+      type: string

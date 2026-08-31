@@ -17,7 +17,7 @@ Skill for **operators and pipeline authors** extending a Dagychu deployment. Can
 |-------|-----------|
 | **Scope** | New job, new pipeline, or change existing? Which **pipeline group** (`default`, custom label from `PIPELINE_YAML_DIRS`)? |
 | **Layout** | Where is the group root on disk (`runtime/`, bundled examples, separate git repo)? How are `path:` entries written relative to that root? |
-| **Execution** | `JOB_EXECUTOR=process` or `docker`? Python version and `requirements.txt` path for `dagychu-config.yaml`? |
+| **Execution** | `JOB_EXECUTOR=process` or `docker`? Python version and dependencies (`requirements.txt` or `pyproject.toml`) for `dagychu-config.yaml`? |
 | **Inputs** | What goes in task `initial_input_json`? Per-job constants? Upstream job outputs? Need `merge` + `priority`? |
 | **Outputs** | Which keys does each job expose in `outputs:`? What should appear in UI **News summary** (`news_chat`)? |
 | **Failure** | Empty data → `raise` or controlled `sys.exit(1)`? Any job must run after upstream failure (`run_on_upstream_failure`)? |
@@ -42,18 +42,20 @@ If unclear, read the user's `PIPELINE_YAML_DIRS`, `runtime/` tree, and `.env` be
 
 ## Workflows
 
-### A) Connect a new project (group)
+### A) First project walkthrough & connecting a new repository
 
 ```
-- [ ] Define group in PIPELINE_YAML_DIRS (e.g. default=.)
-- [ ] Create <group_root>/pipelines/ and jobs tree
-- [ ] Copy examples/dagychu-config.yaml → <group_root>/dagychu-config.yaml
-- [ ] Set stack.python + dependencies.python (requirements path)
-- [ ] Admin → Projects → Refresh validation → Connect
-- [ ] Place at least one valid pipeline YAML; wait for disk sync (~30s) or restart api
+1. [ ] Create or choose project folder: runtime/my_project (or runtime/development / runtime/production)
+2. [ ] Sync repo via git clone / git pull / CI/CD into the folder
+3. [ ] Add dagychu-config.yaml at project root (stack.python, dependencies.python with requirements.txt or pyproject.toml, volumes)
+4. [ ] Create pipelines/ directory and write pipeline YAML manifests (see pipeline-yaml.md)
+5. [ ] Register project in PIPELINE_YAML_DIRS (.env) and run ./reload-projects.sh
+6. [ ] In Web UI: Administration → Projects → Refresh validation → Connect
+7. [ ] In Web UI: verify pipeline and interactive DAG in Pipelines registry
+8. [ ] In Web UI: Create task to test run, then configure triggers in Scheduler → New plan
 ```
 
-Details: [project-setup.md](project-setup.md)
+Full details and examples: [project-setup.md](project-setup.md) & [pipeline-yaml.md](pipeline-yaml.md)
 
 ### B) Create or change a job
 
@@ -132,7 +134,7 @@ jobs:
         key: result
 ```
 
-Runnable demos in the client package: `examples/pipelines/demo_math_linear_v1.yaml`, `examples/pipelines/demo_shared_job_payload_merge.yaml`.
+Runnable demos in the client package: `examples/pipelines/demo_orders_workflow.yaml`, `examples/pipelines/demo_core_showcase.yaml`, `examples/pipelines/demo_shared_job_payload_merge.yaml`.
 
 ### model.yaml + stdout (UI highlights)
 
@@ -158,8 +160,13 @@ stack:
   python: "3.12"
 dependencies:
   python:
+    # Option A: pip requirements.txt
     - type: requirements
       path: requirements.txt
+
+    # Option B: Poetry pyproject.toml
+    # - type: poetry
+    #   path: pyproject.toml
 ```
 
 Template: `examples/dagychu-config.yaml` in the client package (source repos may also have `examples/dagychu-config.template.yaml`).

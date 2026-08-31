@@ -1,0 +1,91 @@
+pipeline_name: demo_core_showcase
+pipeline_tags: [demo, showcase, etl, quality, retries, reporting]
+jobs:
+  - job_name: demo_etl_pipeline
+    ui_name: Core ETL Pipeline
+    path: runtime_seed/jobs/demo_etl_pipeline/latest/main.py
+    deps: []
+    outputs: [records_extracted, records_transformed, total_revenue_usd, avg_order_value, status]
+    inputs:
+      batch_size:
+        merge:
+          - from: initial
+            key: batch_size
+          - from: const
+            value: 120
+        priority: [initial, const]
+
+  - job_name: demo_batch_processing
+    ui_name: Micro-Batch Processor
+    path: runtime_seed/jobs/demo_batch_processing/latest/main.py
+    deps: [demo_etl_pipeline]
+    outputs: [total_processed, batches, batch_size, duration_seconds, status]
+    inputs:
+      total_items:
+        job: demo_etl_pipeline
+        key: records_extracted
+
+  - job_name: demo_data_quality_check
+    ui_name: Data Quality Suite (Score %)
+    path: runtime_seed/jobs/demo_data_quality_check/latest/main.py
+    deps: [demo_etl_pipeline]
+    outputs: [dataset, rows_checked, quality_score_pct, status]
+    inputs:
+      rows_count:
+        job: demo_etl_pipeline
+        key: records_transformed
+
+  - job_name: demo_retry_recovery
+    ui_name: Transient Retry & Recovery
+    path: runtime_seed/jobs/demo_retry_recovery/latest/main.py
+    deps: [demo_batch_processing]
+    outputs: [recovered, gateway_status, batch_ref, status]
+    inputs:
+      force_success:
+        merge:
+          - from: initial
+            key: force_success
+          - from: const
+            value: true
+        priority: [initial, const]
+
+  - job_name: demo_unstable_service
+    ui_name: Unstable Microservice with Jitter
+    path: runtime_seed/jobs/demo_unstable_service/latest/main.py
+    deps: [demo_data_quality_check]
+    outputs: [status_code, items_synced, status]
+    inputs:
+      endpoint:
+        merge:
+          - from: initial
+            key: endpoint
+          - from: const
+            value: "https://api.internal.commerce/v1/sync"
+        priority: [initial, const]
+
+  - job_name: demo_long_running_job
+    ui_name: Multi-Stage Progress Tracker
+    path: runtime_seed/jobs/demo_long_running_job/latest/main.py
+    deps: [demo_retry_recovery, demo_unstable_service]
+    outputs: [stages_completed, total_stages, total_duration_sec, status]
+    inputs:
+      stage_delay_sec:
+        merge:
+          - from: initial
+            key: stage_delay_sec
+          - from: const
+            value: 0.1
+        priority: [initial, const]
+
+  - job_name: demo_daily_report
+    ui_name: Executive Daily Digest
+    path: runtime_seed/jobs/demo_daily_report/latest/main.py
+    deps: [demo_long_running_job, demo_etl_pipeline]
+    outputs: [report_date, total_orders, gross_revenue, status]
+    inputs:
+      gross_revenue:
+        job: demo_etl_pipeline
+        key: total_revenue_usd
+      total_orders:
+        job: demo_etl_pipeline
+        key: records_transformed

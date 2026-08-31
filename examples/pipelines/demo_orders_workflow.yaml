@@ -1,0 +1,63 @@
+pipeline_name: demo_orders_workflow
+pipeline_tags: [demo, workflow, etl, ecommerce]
+jobs:
+  - job_name: demo_orders_extract
+    ui_name: 1. Extract Orders (In-Memory)
+    path: jobs/demo_orders_extract/latest/main.py
+    deps: []
+    outputs: [orders_raw, count, date, status]
+    inputs:
+      count:
+        merge:
+          - from: initial
+            key: count
+          - from: const
+            value: 50
+        priority: [initial, const]
+      date:
+        merge:
+          - from: initial
+            key: date
+          - from: const
+            value: "2026-08-31"
+        priority: [initial, const]
+      seed:
+        merge:
+          - from: initial
+            key: seed
+          - from: const
+            value: 101
+        priority: [initial, const]
+
+  - job_name: demo_orders_validate
+    ui_name: 2. Validate Schemas & Types
+    path: jobs/demo_orders_validate/latest/main.py
+    deps: [demo_orders_extract]
+    outputs: [validated_orders, valid_count, invalid_count, status]
+    inputs:
+      orders:
+        job: demo_orders_extract
+        key: orders_raw
+
+  - job_name: demo_orders_transform
+    ui_name: 3. Currency Normalization & Taxes
+    path: jobs/demo_orders_transform/latest/main.py
+    deps: [demo_orders_validate]
+    outputs: [transformed_orders, total_revenue, total_items, status]
+    inputs:
+      orders:
+        job: demo_orders_validate
+        key: validated_orders
+
+  - job_name: demo_orders_report
+    ui_name: 4. Executive Orders Summary
+    path: jobs/demo_orders_report/latest/main.py
+    deps: [demo_orders_transform]
+    outputs: [report_status, orders_processed, total_revenue, status]
+    inputs:
+      orders:
+        job: demo_orders_transform
+        key: transformed_orders
+      total_revenue:
+        job: demo_orders_transform
+        key: total_revenue

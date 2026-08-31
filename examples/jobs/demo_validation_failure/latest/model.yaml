@@ -1,0 +1,15 @@
+template:
+  allow_invalid: false
+input_schema:
+  type: object
+  properties:
+    allow_invalid:
+      type: boolean
+output_schema:
+  type: object
+  required: [records_checked, status]
+  properties:
+    records_checked:
+      type: integer
+    status:
+      type: string

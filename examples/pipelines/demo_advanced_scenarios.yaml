@@ -1,0 +1,99 @@
+pipeline_name: demo_advanced_scenarios
+pipeline_tags: [demo, advanced, api_sync, parallel, resources, timeout]
+jobs:
+  - job_name: demo_api_sync
+    ui_name: Paginated API Ingestion
+    path: runtime_seed/jobs/demo_api_sync/latest/main.py
+    deps: []
+    outputs: [pages_fetched, total_records, status]
+    inputs:
+      total_pages:
+        merge:
+          - from: initial
+            key: total_pages
+          - from: const
+            value: 4
+        priority: [initial, const]
+      items_per_page:
+        merge:
+          - from: initial
+            key: items_per_page
+          - from: const
+            value: 50
+        priority: [initial, const]
+
+  - job_name: demo_parallel_worker_1
+    ui_name: Shard Worker #1
+    path: runtime_seed/jobs/demo_parallel_workers/latest/main.py
+    deps: [demo_api_sync]
+    outputs: [worker_id, partition_id, records_processed, status]
+    inputs:
+      worker_id:
+        merge:
+          - from: initial
+            key: worker_id_1
+          - from: const
+            value: "worker-01"
+        priority: [initial, const]
+      partition_id:
+        merge:
+          - from: initial
+            key: partition_id_1
+          - from: const
+            value: 1
+        priority: [initial, const]
+      records_count:
+        job: demo_api_sync
+        key: total_records
+
+  - job_name: demo_parallel_worker_2
+    ui_name: Shard Worker #2
+    path: runtime_seed/jobs/demo_parallel_workers/latest/main.py
+    deps: [demo_api_sync]
+    outputs: [worker_id, partition_id, records_processed, status]
+    inputs:
+      worker_id:
+        merge:
+          - from: initial
+            key: worker_id_2
+          - from: const
+            value: "worker-02"
+        priority: [initial, const]
+      partition_id:
+        merge:
+          - from: initial
+            key: partition_id_2
+          - from: const
+            value: 2
+        priority: [initial, const]
+      records_count:
+        job: demo_api_sync
+        key: total_records
+
+  - job_name: demo_resource_processing
+    ui_name: Gaussian Quantiles & Sorting
+    path: runtime_seed/jobs/demo_resource_processing/latest/main.py
+    deps: [demo_parallel_worker_1, demo_parallel_worker_2]
+    outputs: [samples_count, mean, p50, p90, p99, duration_ms, status]
+    inputs:
+      samples_count:
+        merge:
+          - from: initial
+            key: samples_count
+          - from: const
+            value: 20000
+        priority: [initial, const]
+
+  - job_name: demo_timeout
+    ui_name: Execution Timeout Sandbox
+    path: runtime_seed/jobs/demo_timeout/latest/main.py
+    deps: [demo_resource_processing]
+    outputs: [sleep_seconds, status]
+    inputs:
+      sleep_seconds:
+        merge:
+          - from: initial
+            key: sleep_seconds
+          - from: const
+            value: 0.5
+        priority: [initial, const]

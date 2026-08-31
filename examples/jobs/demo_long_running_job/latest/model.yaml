@@ -1,0 +1,17 @@
+template:
+  stage_delay_sec: 0.3
+input_schema:
+  type: object
+  properties:
+    stage_delay_sec:
+      type: number
+output_schema:
+  type: object
+  required: [stages_completed, total_stages, status]
+  properties:
+    stages_completed:
+      type: integer
+    total_stages:
+      type: integer
+    status:
+      type: string

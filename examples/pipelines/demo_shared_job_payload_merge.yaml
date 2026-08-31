@@ -3,48 +3,56 @@ pipeline_tags: [demo, merge, shared_job, payload]
 jobs:
   - job_name: prepare_payload
     ui_name: Prepare payload
-    path: runtime_seed/jobs/job1_square/latest/main.py
+    path: runtime_seed/jobs/demo_etl_pipeline/latest/main.py
     deps: []
-    outputs: [payload]
+    outputs: [records_extracted, records_transformed, total_revenue_usd, avg_order_value, status]
     inputs:
-      number: initial
+      batch_size:
+        merge:
+          - from: initial
+            key: batch_size
+          - from: const
+            value: 120
+        priority: [initial, const]
 
   - job_name: shared_sender_email
     ui_name: Shared sender (email profile)
-    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    path: runtime_seed/jobs/demo_daily_report/latest/main.py
     deps: [prepare_payload]
-    outputs: [minute_utc, ok]
+    outputs: [report_date, total_orders, gross_revenue, status]
     inputs:
-      payload:
+      gross_revenue:
         merge:
           - from: job
             job: prepare_payload
-            key: payload
+            key: total_revenue_usd
           - from: const
-            value:
-              profile: email
-              template: invoice_v1
+            value: 84250.0
           - from: initial
-            key: payload
+            key: custom_revenue
         priority: [job, const, initial]
-        deep_merge: true
+        deep_merge: false
+      total_orders:
+        job: prepare_payload
+        key: records_transformed
 
   - job_name: shared_sender_sms
     ui_name: Shared sender (sms profile)
-    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    path: runtime_seed/jobs/demo_daily_report/latest/main.py
     deps: [prepare_payload]
-    outputs: [minute_utc, ok]
+    outputs: [report_date, total_orders, gross_revenue, status]
     inputs:
-      payload:
+      gross_revenue:
         merge:
           - from: job
             job: prepare_payload
-            key: payload
+            key: total_revenue_usd
           - from: const
-            value:
-              profile: sms
-              template: invoice_v1_short
+            value: 42000.0
           - from: initial
-            key: payload
+            key: custom_revenue
         priority: [job, const, initial]
-        deep_merge: true
+        deep_merge: false
+      total_orders:
+        job: prepare_payload
+        key: records_transformed

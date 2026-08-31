@@ -3,11 +3,17 @@ pipeline_tags: [demo, notifications, telegram, slack]
 jobs:
   - job_name: prepare_payload
     ui_name: Prepare payload
-    path: runtime_seed/jobs/job_retry_even_odd/latest/main.py
+    path: runtime_seed/jobs/demo_etl_pipeline/latest/main.py
     deps: []
-    outputs: [minute_utc, ok]
+    outputs: [records_extracted, records_transformed, total_revenue_usd, status]
     inputs:
-      payload: initial
+      batch_size:
+        merge:
+          - from: initial
+            key: batch_size
+          - from: const
+            value: 100
+        priority: [initial, const]
 
   - job_name: notify_always
     ui_name: Notify channel (always)

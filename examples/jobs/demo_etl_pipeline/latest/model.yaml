@@ -1,0 +1,23 @@
+template:
+  batch_size: 120
+  seed: 42
+input_schema:
+  type: object
+  properties:
+    batch_size:
+      type: integer
+      minimum: 1
+    seed:
+      type: integer
+output_schema:
+  type: object
+  required: [records_extracted, records_transformed, total_revenue_usd, status]
+  properties:
+    records_extracted:
+      type: integer
+    records_transformed:
+      type: integer
+    total_revenue_usd:
+      type: number
+    status:
+      type: string

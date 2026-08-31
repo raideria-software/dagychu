@@ -1,0 +1,25 @@
+template:
+  report_date: "2026-08-31"
+  total_orders: 1420
+  gross_revenue: 84250.00
+input_schema:
+  type: object
+  properties:
+    report_date:
+      type: string
+    total_orders:
+      type: integer
+    gross_revenue:
+      type: number
+output_schema:
+  type: object
+  required: [report_date, total_orders, gross_revenue, status]
+  properties:
+    report_date:
+      type: string
+    total_orders:
+      type: integer
+    gross_revenue:
+      type: number
+    status:
+      type: string

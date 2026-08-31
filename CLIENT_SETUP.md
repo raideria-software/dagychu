@@ -22,15 +22,129 @@ In the **Enterprise** client artifact this file is copied to **`README.md`**. In
 - `examples/` — demo pipeline YAML, job seeds, project config template; Enterprise/Pro also include `examples/external_client/` for `/ext/tasks`
 - `skills/` — Cursor-oriented skills for pipeline authors (`skills/README.md`)
 
-## Runtime folder (jobs + pipelines)
+## Runtime folder (jobs + pipelines) & Project Code Placement
 
-`install.sh` creates `runtime/` next to `docker-compose.yml` with three projects:
+`install.sh` creates `runtime/` next to `docker-compose.yml` with three initial projects:
 
 - `runtime/demo/pipelines/` + `runtime/demo/jobs/` — seeded with demo jobs and pipeline YAML
-- `runtime/development/pipelines/` + `runtime/development/jobs/` — empty project
-- `runtime/production/pipelines/` + `runtime/production/jobs/` — empty project
+- `runtime/development/pipelines/` + `runtime/development/jobs/` — starter development project
+- `runtime/production/pipelines/` + `runtime/production/jobs/` — starter production project
 
 Each project root also has `dagychu-config.yaml`. Compose mounts `runtime/` read-only at `/srv/runtime`.
+
+---
+
+## First project walkthrough (Step-by-step from zero to scheduled run)
+
+Follow these 8 steps to deploy your custom repository and launch your first pipeline:
+
+### Step 1: Create or choose a project directory under `runtime/`
+You can use the starter `runtime/development` (or `runtime/production`) directory, or create a brand new folder:
+```bash
+mkdir -p runtime/my_analytics
+```
+
+### Step 2: Sync your repository (Git / CI/CD)
+Clone your repository or set up your deployment runner to sync code directly into the project folder:
+```bash
+git clone git@github.com:my-org/my-analytics-repo.git runtime/my_analytics
+# or inside CI/CD:
+# rsync -av --exclude '.git' ./src/ /opt/dagychu/runtime/my_analytics/
+```
+
+### Step 3: Configure `dagychu-config.yaml` at project root
+Create `runtime/my_analytics/dagychu-config.yaml` (copy from `examples/dagychu-config.yaml` as a base). This tells Dagychu which Python runtime and dependencies to prepare (`requirements.txt` or `pyproject.toml`):
+```yaml
+dagychu_config_version: 1
+stack:
+  python: "3.12"      # 3.10 | 3.11 | 3.12 | 3.13
+  bash: false
+dependencies:
+  python:
+    # Option A: Standard pip requirements.txt
+    - type: requirements
+      path: requirements.txt
+
+    # Option B: Poetry pyproject.toml
+    # - type: poetry
+    #   path: pyproject.toml
+volumes:
+  external:
+    scratch:
+      host_path: /tmp/dagychu-my-analytics
+      permission: read_write
+```
+
+### Step 4: Create `pipelines/` directory and author your pipeline YAML
+Create a `pipelines/` subdirectory and add your pipeline manifest (e.g. `runtime/my_analytics/pipelines/daily_etl.yaml`).
+*(For pipeline YAML syntax, input wiring, and schema contracts, see the `skills/dagychu/pipeline-yaml.md` skill or UI documentation)*:
+```yaml
+pipeline_name: daily_etl
+pipeline_tags: [analytics, daily]
+jobs:
+  - job_name: extract_data
+    ui_name: 1. Extract Data
+    path: jobs/extract/main.py
+    deps: []
+    outputs: [raw_records, count]
+    inputs:
+      date: initial
+
+  - job_name: transform_and_load
+    ui_name: 2. Transform & Load
+    path: jobs/transform/main.py
+    deps: [extract_data]
+    outputs: [status, loaded_rows]
+    inputs:
+      records:
+        job: extract_data
+        key: raw_records
+```
+
+### Step 5: Inform Dagychu about the new project (`reload-projects.sh`)
+If you created a new project directory (e.g. `my_analytics`), add it to `PIPELINE_YAML_DIRS` in `.env`:
+```bash
+# In .env:
+PIPELINE_YAML_DIRS=demo=demo,development=development,production=production,my_analytics=my_analytics
+```
+Then run the reload script to register the project without taking down databases:
+```bash
+./reload-projects.sh
+```
+
+### Step 6: Validate & Connect in Dagychu UI
+1. Open the Dagychu UI in your browser (`http://<host>:3000`).
+2. Go to **Administration → Projects**.
+3. Select your new project group (`my_analytics`).
+4. Click **Refresh validation** to check syntax and requirements.
+5. Click **Connect** (triggers runtime image build when using Docker executor).
+
+### Step 7: View your pipelines in the Pipelines registry
+Go to the **Pipelines** tab in the main navigation. Your `daily_etl` pipeline and its interactive DAG graph will be visible and ready for execution.
+
+### Step 8: Create a Task and configure a Scheduler plan
+1. Click **Create task** on your pipeline, supply test input JSON (e.g. `{"date": "2026-08-31"}`), and click **Run now**.
+2. To automate runs: go to **Scheduler → New plan**, select your project group and pipeline, and configure a **cron**, **webhook**, **SLA**, or **dependency** trigger.
+
+---
+
+### Where and how to place your code (Summary)
+
+The `development` and `production` folders are **recommended conventions**, not hard requirements. You can deploy your own codebase in several convenient ways:
+
+1. **Direct Git clone / CI/CD into `runtime/development` or `runtime/production`:**
+   Configure your deployment pipeline or run `git pull` directly inside `runtime/development` (or `runtime/production`).
+2. **Dedicated custom project folders:**
+   Clone your repo into `runtime/<my_project_name>`. Add `<my_project_name>=<my_project_name>` to `PIPELINE_YAML_DIRS` in `.env` and run `./reload-projects.sh`.
+
+#### Core requirements for any Dagychu project:
+
+1. **`dagychu-config.yaml`** at the project group root: defines the Python runtime stack (`stack.python`), dependencies (`dependencies.python` pointing to `requirements.txt` or `pyproject.toml`), and external mount volumes.
+2. **`pipelines/` directory**: contains YAML pipeline manifests (`*.yaml`) that describe the execution DAG and job dependencies.
+3. **Job code**: Python scripts or modules (by default under `jobs/`, or any relative path referenced in your pipeline YAML `path:` fields).
+
+#### Connecting the project:
+After placing your project files, open **Administration → Projects** in the UI, click **Refresh validation**, and click **Connect**. If `execution.project_execution_gate_enabled: true` is set, tasks will only execute once the project group is connected.
 
 `.env` after install:
 
@@ -40,9 +154,11 @@ Each project root also has `dagychu-config.yaml`. Compose mounts `runtime/` read
 
 ### Add another project
 
-1. Create `runtime/<name>/pipelines` and `runtime/<name>/jobs` (or let the reload script do it).
-2. Add `<name>=<name>` to `PIPELINE_YAML_DIRS` in `.env`.
-3. Run `./reload-projects.sh` — recreates **api**, **worker**, **scheduler**, **ui_backend** only. Postgres, RabbitMQ, and Redis stay up.
+1. Create `runtime/<name>/pipelines` and `runtime/<name>/jobs` (or let the reload script do it, or `git clone` your repo into `runtime/<name>`).
+2. Ensure `runtime/<name>/dagychu-config.yaml` exists and is configured.
+3. Add `<name>=<name>` to `PIPELINE_YAML_DIRS` in `.env`.
+4. Run `./reload-projects.sh` — recreates **api**, **worker**, **scheduler**, **ui_backend** only. Postgres, RabbitMQ, and Redis stay up.
+5. In UI **Administration → Projects**, click **Refresh validation** → **Connect**.
 
 YAML files in existing groups also sync on `PIPELINE_DISK_SYNC_INTERVAL_SECONDS` without a reload. A **new group** in `.env` needs `reload-projects.sh`.
 

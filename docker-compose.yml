@@ -1,6 +1,6 @@
 # Community edition production compose (no ClickHouse; lighter defaults).
 # App image: public Community GHCR (raideria-software/dagychu).
-# 3.4.1 is substituted by scripts/prepare_client_pack.sh (and the same default
+# 3.4.2 is substituted by scripts/prepare_client_pack.sh (and the same default
 # repo is used if you replace the tag locally). Override repo via --image in the pack script.
 x-dagychu-platform: &dagychu-platform
   platform: ${DAGYCHU_PLATFORM:-linux/amd64}
@@ -52,7 +52,7 @@ services:
 
   api:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     command: python -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --workers 2
     restart: unless-stopped
     healthcheck:
@@ -129,7 +129,7 @@ services:
 
   worker:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     command: python -m app.core_worker.worker
     restart: unless-stopped
     healthcheck:
@@ -204,7 +204,7 @@ services:
   # Consumes only sla_deadline_reserve_queue — never the main task_queue.
   worker_deadline_reserve:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     command: python -m app.core_worker.worker
     restart: unless-stopped
     healthcheck:
@@ -281,7 +281,7 @@ services:
 
   scheduler:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     command: python -m uvicorn app.scheduler.main:app --host 0.0.0.0 --port 9020
     restart: unless-stopped
     healthcheck:
@@ -349,7 +349,7 @@ services:
 
   platform_bootstrap:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     restart: "no"
     command: python -m app.bootstrap.system_pipelines
     environment:
@@ -367,7 +367,7 @@ services:
 
   ui_backend:
     <<: *dagychu-platform
-    image: ghcr.io/raideria-software/dagychu:3.4.1
+    image: ghcr.io/raideria-software/dagychu:3.4.2
     command: python -m uvicorn ui_backend.main:app --host 0.0.0.0 --port 9010 --workers 2
     restart: unless-stopped
     healthcheck:
@@ -421,7 +421,7 @@ services:
       CORE_HTTP_LONG_TIMEOUT_SEC: "${CORE_HTTP_LONG_TIMEOUT_SEC:-1800}"
       EXT_API_ENABLED: "${EXT_API_ENABLED:-false}"
       UI_INSTANCE_NAME: "${UI_INSTANCE_NAME:-}"
-      DAGYCHU_VERSION: "${DAGYCHU_VERSION:-3.4.1}"
+      DAGYCHU_VERSION: "${DAGYCHU_VERSION:-3.4.2}"
     volumes:
       - job_logs:/var/log/job_runs
       - ./dagychu-instance.yaml:/srv/dagychu-instance.yaml:ro

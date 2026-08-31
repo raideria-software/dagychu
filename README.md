@@ -78,14 +78,14 @@ Requirements: Docker Engine and Docker Compose v2. Pulling from GHCR needs a Git
 The stack uses `docker-compose.yml` (pinned `ghcr.io/raideria-software/dagychu:<version>`). Optional overlay when jobs run via the host Docker engine: `docker-compose.docker-sock.yml` (`JOB_EXECUTOR=docker`).
 
 ```bash
-docker pull ghcr.io/raideria-software/dagychu:3.4.1
+docker pull ghcr.io/raideria-software/dagychu:3.4.2
 ```
 
 Demo pipelines are seeded under `runtime/demo/` on first install. Runs require a **connected** project: open **Administration → Projects**, validate and connect the group before the first run (`execution.project_execution_gate_enabled` in `dagychu-instance.yaml`). Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
 
 After install, use `./update.sh` for a newer pack/image tag. Do **not** run `./install.sh` again on an existing deployment (it regenerates secrets).
 
-Use explicit version tags in production rather than `latest`. Current product line: **3.4.1**.
+Use explicit version tags in production rather than `latest`. Current product line: **3.4.2**.
 
 ## What this repository contains
 

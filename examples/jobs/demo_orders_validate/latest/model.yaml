@@ -1,0 +1,15 @@
+input_schema:
+  type: object
+  properties:
+    orders:
+      type: array
+output_schema:
+  type: object
+  required: [validated_orders, valid_count, status]
+  properties:
+    validated_orders:
+      type: array
+    valid_count:
+      type: integer
+    status:
+      type: string

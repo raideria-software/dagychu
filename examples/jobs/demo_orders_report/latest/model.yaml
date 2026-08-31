@@ -1,0 +1,19 @@
+input_schema:
+  type: object
+  properties:
+    orders:
+      type: array
+    total_revenue:
+      type: number
+output_schema:
+  type: object
+  required: [report_status, orders_processed, total_revenue, status]
+  properties:
+    report_status:
+      type: string
+    orders_processed:
+      type: integer
+    total_revenue:
+      type: number
+    status:
+      type: string

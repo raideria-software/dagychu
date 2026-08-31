@@ -1,0 +1,25 @@
+template:
+  worker_id: worker-01
+  partition_id: 1
+  records_count: 250
+input_schema:
+  type: object
+  properties:
+    worker_id:
+      type: string
+    partition_id:
+      type: integer
+    records_count:
+      type: integer
+output_schema:
+  type: object
+  required: [worker_id, partition_id, records_processed, status]
+  properties:
+    worker_id:
+      type: string
+    partition_id:
+      type: integer
+    records_processed:
+      type: integer
+    status:
+      type: string

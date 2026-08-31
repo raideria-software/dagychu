@@ -1,0 +1,15 @@
+template:
+  force_success: false
+input_schema:
+  type: object
+  properties:
+    force_success:
+      type: boolean
+output_schema:
+  type: object
+  required: [recovered, status]
+  properties:
+    recovered:
+      type: boolean
+    status:
+      type: string

@@ -1,0 +1,20 @@
+template:
+  endpoint: https://api.internal.demo/v2/inventory
+  max_retries: 3
+input_schema:
+  type: object
+  properties:
+    endpoint:
+      type: string
+    max_retries:
+      type: integer
+output_schema:
+  type: object
+  required: [status_code, items_synced, status]
+  properties:
+    status_code:
+      type: integer
+    items_synced:
+      type: integer
+    status:
+      type: string

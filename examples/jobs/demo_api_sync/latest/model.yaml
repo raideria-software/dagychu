@@ -1,0 +1,20 @@
+template:
+  total_pages: 5
+  items_per_page: 25
+input_schema:
+  type: object
+  properties:
+    total_pages:
+      type: integer
+    items_per_page:
+      type: integer
+output_schema:
+  type: object
+  required: [pages_fetched, total_records, status]
+  properties:
+    pages_fetched:
+      type: integer
+    total_records:
+      type: integer
+    status:
+      type: string

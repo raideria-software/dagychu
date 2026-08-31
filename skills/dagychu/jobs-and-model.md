@@ -11,31 +11,17 @@ Preferred tree under group root:
   jobs/<domain>/<job_name>/v1/main.py          # optional versioned impl
 ```
 
-`latest/main.py` may re-export `v1` (see `examples/jobs/job1_square/` in the client package).
-
-Pipeline YAML `path:` example: `runtime_seed/jobs/job1_square/latest/main.py` when group root points at a tree that includes `runtime_seed/`.
-
-## Runtime contract
-
-1. Read **stdin** as JSON (empty → `{}`).
-2. Validate required fields; **`raise`** or exit non-zero on invalid input.
-3. On success: write **one JSON object** to **stdout** — no extra stdout noise.
-4. Put `print` / `logging` on **stderr** so diagnostics are not mixed into the JSON contract.
-5. Deterministic for same input; no hidden side effects unless the job is explicitly designed for DB/API.
-
-Small ASCII payloads can use `print(json.dumps(result))`. For **large UTF-8 JSON**, copy `examples/jobs/_lib/dagychu_stdio.py` (repo: `examples/runtime_seed/jobs/_lib/dagychu_stdio.py`) and write bytes once:
-
-```python
 from jobs._lib.dagychu_stdio import read_stdin_json, write_stdout_json
+
 
 def main() -> None:
     payload = read_stdin_json()
-    n = int(payload["number"])
-    write_stdout_json({"result": n * n})
+    batch_size = int(payload.get("batch_size", 120))
+    write_stdout_json({"records_extracted": batch_size, "records_transformed": batch_size, "total_revenue_usd": 1500.0, "status": "COMPLETED"})
+
 
 if __name__ == "__main__":
     main()
-```
 
 `print(json.dumps(..., ensure_ascii=False))` goes through TextIOWrapper and can split a multibyte character; the worker then fails the job with U+FFFD. `write_stdout_json` avoids that. Downstream jobs still read **keys from `output_json`**, not the stdout stream.
 
@@ -53,25 +39,28 @@ Worker maps pipeline `inputs:` into the stdin payload. Keys in `outputs:` must e
 | `news_chat` | UI News summary paths (preferred v1 block) |
 | `news` | Legacy alias: `keys` + `color` instead of `output_keys` + `tag_color_field` |
 
-Minimal example (`examples/jobs/job1_square/latest/model.yaml`):
+Minimal example (`examples/runtime_seed/jobs/demo_etl_pipeline/latest/model.yaml`):
 
 ```yaml
 template:
-  number: 4
+  batch_size: 120
 input_schema:
   type: object
-  required: [number]
   properties:
-    number:
+    batch_size:
       type: integer
-      minimum: 1
-      maximum: 10
 output_schema:
   type: object
-  required: [result]
+  required: [records_extracted, records_transformed, total_revenue_usd, status]
   properties:
-    result:
+    records_extracted:
       type: integer
+    records_transformed:
+      type: integer
+    total_revenue_usd:
+      type: number
+    status:
+      type: string
 ```
 
 Without `model.yaml`, execution still works if YAML wiring is correct; UI may not pre-fill inputs.

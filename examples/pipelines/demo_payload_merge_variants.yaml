@@ -3,48 +3,56 @@ pipeline_tags: [demo, merge, variants, payload]
 jobs:
   - job_name: make_base_payload
     ui_name: Build base payload
-    path: runtime_seed/jobs/job1_square/latest/main.py
+    path: runtime_seed/jobs/demo_etl_pipeline/latest/main.py
     deps: []
-    outputs: [payload]
+    outputs: [records_extracted, records_transformed, total_revenue_usd, avg_order_value, status]
     inputs:
-      number: initial
+      batch_size:
+        merge:
+          - from: initial
+            key: batch_size
+          - from: const
+            value: 100
+        priority: [initial, const]
 
   - job_name: finalize_for_project_a
     ui_name: Finalize payload (Project A)
-    path: runtime_seed/jobs/job2_mirror_add/latest/main.py
+    path: runtime_seed/jobs/demo_daily_report/latest/main.py
     deps: [make_base_payload]
-    outputs: [result]
+    outputs: [report_date, total_orders, gross_revenue, status]
     inputs:
-      number:
+      gross_revenue:
         merge:
           - from: job
             job: make_base_payload
-            key: payload
+            key: total_revenue_usd
           - from: const
-            value:
-              project_tag: project_a
-              notify_channel: email
+            value: 50000.0
           - from: initial
-            key: payload
+            key: target_revenue
         priority: [job, const, initial]
         deep_merge: false
+      total_orders:
+        job: make_base_payload
+        key: records_transformed
 
   - job_name: finalize_for_project_b
     ui_name: Finalize payload (Project B)
-    path: runtime_seed/jobs/job2_mirror_add/latest/main.py
+    path: runtime_seed/jobs/demo_daily_report/latest/main.py
     deps: [make_base_payload]
-    outputs: [result]
+    outputs: [report_date, total_orders, gross_revenue, status]
     inputs:
-      number:
+      gross_revenue:
         merge:
           - from: job
             job: make_base_payload
-            key: payload
+            key: total_revenue_usd
           - from: const
-            value:
-              project_tag: project_b
-              notify_channel: telegram
+            value: 75000.0
           - from: initial
-            key: payload
+            key: target_revenue
         priority: [job, const, initial]
         deep_merge: false
+      total_orders:
+        job: make_base_payload
+        key: records_transformed

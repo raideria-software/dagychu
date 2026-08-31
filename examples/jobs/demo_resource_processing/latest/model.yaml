@@ -1,0 +1,23 @@
+template:
+  samples_count: 20000
+input_schema:
+  type: object
+  properties:
+    samples_count:
+      type: integer
+output_schema:
+  type: object
+  required: [samples_count, mean, p50, p90, p99, status]
+  properties:
+    samples_count:
+      type: integer
+    mean:
+      type: number
+    p50:
+      type: number
+    p90:
+      type: number
+    p99:
+      type: number
+    status:
+      type: string

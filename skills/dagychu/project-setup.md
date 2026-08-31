@@ -38,23 +38,48 @@ PIPELINE_YAML_DIRS=default=app
 
 Align `path:` in YAML with this layout.
 
-## Directory template (typical client install)
+## Directory template & Code Placement (Git / CI/CD)
+
+The starter project folders created by `install.sh` (`runtime/development` and `runtime/production`) are **recommendations / starter layouts**. You can organize your code, configure automated CI/CD deployment, or run `git pull` directly into these folders or into dedicated project subdirectories.
+
+### Project Layout
 
 ```text
-runtime/                          # mounted → /srv/runtime
-  dagychu-config.yaml
-  requirements.txt
-  pipelines/
-    my_pipeline_v1.yaml
-  jobs/
-    my_domain/
-      my_job/
-        latest/
-          main.py
-          model.yaml
+runtime/                          # mounted into containers → /srv/runtime
+  development/                    # or your custom project repo: e.g. runtime/my_analytics/
+    dagychu-config.yaml           # [REQUIRED] Project runtime config (Python, deps, volumes)
+    requirements.txt              # Project Python packages
+    pipelines/                    # [REQUIRED] Pipeline DAG definitions (*.yaml)
+      orders_workflow.yaml
+    jobs/                         # Job scripts (or domain folders)
+      analytics/
+        extract_orders/
+          latest/
+            main.py
+            model.yaml
 ```
 
-Copy `examples/dagychu-config.yaml` → `runtime/dagychu-config.yaml` and adjust.
+### Essential Requirements for Any Project:
+1. **`dagychu-config.yaml`** at the project group root (copied and adapted from `examples/dagychu-config.yaml`).
+2. **`pipelines/`** directory containing YAML files describing pipeline DAGs (see `skills/dagychu/pipeline-yaml.md`).
+3. **Job code tree**: Python scripts / packages referenced in `path:` fields inside `pipelines/*.yaml`.
+4. **Registration in `.env`**: ensure `PIPELINE_YAML_DIRS` has `<group_name>=<relative_dir>` and run `./reload-projects.sh` if adding a new group.
+5. **Connection in UI**: open **Administration → Projects**, click **Refresh validation**, and click **Connect**.
+
+---
+
+## First project walkthrough (Step-by-Step)
+
+1. **Create/choose folder**: `mkdir -p runtime/my_project` (or use `runtime/development` / `runtime/production`).
+2. **Sync repository**: `git clone <repo-url> runtime/my_project` or configure CI/CD / `git pull`.
+3. **Create `dagychu-config.yaml`**: configure Python version (`stack.python: "3.12"`), dependencies path (`requirements.txt` or `pyproject.toml`), and mount volumes.
+4. **Create `pipelines/` & author YAML**: add `runtime/my_project/pipelines/my_workflow.yaml` defining the job dependency graph (see [pipeline-yaml.md](pipeline-yaml.md)).
+5. **Register in `.env` & reload**: add `my_project=my_project` to `PIPELINE_YAML_DIRS` in `.env` and run `./reload-projects.sh`.
+6. **Validate and Connect in UI**: navigate to **Administration → Projects**, click **Refresh validation** → **Connect**.
+7. **View Pipelines**: open the **Pipelines** tab in UI to see the synced pipeline DAG.
+8. **Create Task & Schedule**: click **Create task** to trigger an execution, then configure automated triggers in **Scheduler → New plan**.
+
+---
 
 ## dagychu-config.yaml
 
@@ -65,8 +90,13 @@ stack:
   bash: false
 dependencies:
   python:
+    # Option A: Standard pip requirements
     - type: requirements
       path: requirements.txt
+
+    # Option B: Poetry pyproject.toml
+    # - type: poetry
+    #   path: pyproject.toml
 volumes:
   external:
     scratch:
