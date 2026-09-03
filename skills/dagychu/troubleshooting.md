@@ -73,7 +73,7 @@ Community builds **disable** `/ext/*` by edition even when YAML lists `external_
 | 404 / not available | Community edition | Use UI/API task create, or Enterprise with External API enabled |
 | 401/403 | Bearer token; `external_api.allowed_users` | Check token user and instance YAML |
 | 408 on sync run | Wait timeout | Increase timeout or use async submit + poll |
-| Callback not received | URL, HMAC, firewall | See `examples/external_client/` |
+| Callback not received | URL, HMAC, firewall | Enterprise pack: `examples/external_client/`; Community has no External API |
 
 ## Debug workflow
 

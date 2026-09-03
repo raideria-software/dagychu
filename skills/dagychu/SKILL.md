@@ -82,14 +82,14 @@ Details: [pipeline-yaml.md](pipeline-yaml.md)
 
 ### D) Demo pipeline — CTO documentation (best practice)
 
-**Optional.** Use when publishing a **customer-facing demo** pipeline catalogue (not required for every internal job).
+**Optional.** Use when publishing a **customer-facing demo catalogue repository** (not the Dagychu client install pack, which does not ship `docs/pipelines/`).
 
 ```
-- [ ] Create docs/pipelines/<pipeline_name>/README.md (English, CTO audience)
+- [ ] In the catalogue repo: create docs/pipelines/<pipeline_name>/README.md (English, CTO audience)
 - [ ] Cover: what it is, why it matters, how to use in the customer's company
 - [ ] Document prerequisites, roles, initial_input_json fields, outputs/consumers
 - [ ] State demo limitations and production gaps honestly
-- [ ] Add row to docs/pipelines/README.md index table
+- [ ] Add row to that repo's docs/pipelines/README.md index table
 ```
 
 Details: [demo-pipeline-docs.md](demo-pipeline-docs.md)
@@ -169,7 +169,7 @@ dependencies:
     #   path: pyproject.toml
 ```
 
-Template: `examples/dagychu-config.yaml` in the client package (source repos may also have `examples/dagychu-config.template.yaml`).
+Template in this package: `examples/dagychu-config.yaml`.
 
 ---
 
@@ -182,14 +182,15 @@ Template: `examples/dagychu-config.yaml` in the client package (source repos may
 | [project-setup.md](project-setup.md) | PIPELINE_YAML_DIRS, instance vs project config |
 | [troubleshooting.md](troubleshooting.md) | frequent failures and fixes |
 | [demo-pipeline-docs.md](demo-pipeline-docs.md) | **Best practice** — CTO-facing doc template per demo pipeline |
-| `docs/pipelines/README.md` | demo catalogue index (in demo repos) |
 | `examples/pipelines/README.md` | demo patterns (in this package) |
 | Settings → Documentation → Guide | operator guide (in the image) |
 | Settings → Documentation → Operations | maintenance and Docker executor |
 
+When publishing a **separate demo catalogue** repo, maintain an index at `docs/pipelines/README.md` there (not shipped in the Dagychu client pack).
+
 ## Out of scope for this skill
 
-Platform/product development (API, UI, workers, edition gating) is **not** covered here — that lives in the product source tree under `.cursor/skills/`. For operators: scheduling UI, Monitoring, and External API usage — see **Settings → Documentation** and `examples/external_client/` in the client package.
+Platform/product development (API, UI, workers, edition gating) is **not** covered here — that lives in the product source tree under `.cursor/skills/`. For operators: scheduling UI and Monitoring — see **Settings → Documentation**. External HTTP API helpers ship only in the **Enterprise** client pack as `examples/external_client/` (Community disables `/ext/*`).
 
 ---
 
@@ -200,5 +201,5 @@ Platform/product development (API, UI, workers, edition gating) is **not** cover
 - [ ] Job script + `model.yaml` aligned with stdout keys and `outputs:`
 - [ ] Pipeline YAML validated in UI; deps acyclic; paths exist under group root
 - [ ] `initial_input_json` shape documented (YAML header comment or task template)
-- [ ] **Best practice — demo catalogue only:** `docs/pipelines/<pipeline_name>/README.md` complete and indexed
+- [ ] **Best practice — demo catalogue repos only:** author `docs/pipelines/<pipeline_name>/README.md` in that catalogue (not part of the Dagychu client pack)
 - [ ] User told how to deploy (`runtime/` rsync/git pull) and refresh disk sync

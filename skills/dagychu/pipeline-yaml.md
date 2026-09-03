@@ -92,7 +92,7 @@ retry_policy:
   max_delay_sec: 300
 ```
 
-Demo: `examples/pipelines/demo_retry_policy_even_odd.yaml`.
+Runnable demo: `examples/pipelines/demo_core_showcase.yaml` (`demo_retry_recovery` job has `retry_policy` with `mode: exponential`).
 
 ## Synthetic entrance
 

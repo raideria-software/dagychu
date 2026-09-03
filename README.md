@@ -63,7 +63,7 @@ The API stores execution state and publishes work. Workers consume queued jobs a
 
 This tree is the **Community install distribution** (same layout as the GitHub Release asset `client-community-<version>`). Application code runs from the pinned GHCR image; there is no local app build in this pack.
 
-Requirements: Docker Engine and Docker Compose v2. Pulling from GHCR needs a GitHub PAT with `read:packages` if the package is not public (`install.sh` logs in).
+Requirements: Docker Engine and Docker Compose v2, plus outbound access to pull the public image `ghcr.io/raideria-software/dagychu` (no GitHub account, PAT, or `docker login` required).
 
 1. Download and unpack the Community client pack (or clone this repository).
 2. From this directory:

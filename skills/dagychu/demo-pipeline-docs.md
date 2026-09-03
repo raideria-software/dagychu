@@ -6,12 +6,13 @@ Every **demo pipeline** in a demo catalogue should ship with **English documenta
 
 ## When this applies
 
-- **Best practice / required** for each new pipeline under `pipelines/*.yaml` in a **dagychu demo** catalogue repo.
+- **Best practice / required** for each new pipeline under `pipelines/*.yaml` in a **separate demo catalogue** git repo (not the Dagychu client install pack).
 - **Skip** for internal-only or throwaway experiments (or mark as `draft` in doc frontmatter).
+- The Dagychu Community/Enterprise client pack does **not** ship `docs/pipelines/` — create that tree only in your catalogue repository.
 
 ## File layout
 
-One doc set per pipeline, keyed by `pipeline_name`:
+One doc set per pipeline, keyed by `pipeline_name` (in **your** catalogue repo):
 
 ```text
 docs/pipelines/

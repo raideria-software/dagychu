@@ -39,7 +39,7 @@ Worker maps pipeline `inputs:` into the stdin payload. Keys in `outputs:` must e
 | `news_chat` | UI News summary paths (preferred v1 block) |
 | `news` | Legacy alias: `keys` + `color` instead of `output_keys` + `tag_color_field` |
 
-Minimal example (`examples/runtime_seed/jobs/demo_etl_pipeline/latest/model.yaml`):
+Minimal example (client pack: `examples/jobs/demo_etl_pipeline/latest/model.yaml`):
 
 ```yaml
 template:

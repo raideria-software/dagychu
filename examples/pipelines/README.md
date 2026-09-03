@@ -78,7 +78,7 @@ retry_policy:
 
 Runnable example:
 
-- `examples/pipelines/demo_retry_policy_even_odd.yaml`
+- `examples/pipelines/demo_core_showcase.yaml` — job `demo_retry_recovery` includes `retry_policy` (`mode: exponential`). Set task input `force_success: false` to observe fail-then-recover.
 
 ## Parallel launch order mode (`_meta.launch_order_mode`)
 

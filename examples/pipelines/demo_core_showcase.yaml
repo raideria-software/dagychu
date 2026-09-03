@@ -40,6 +40,14 @@ jobs:
     path: runtime_seed/jobs/demo_retry_recovery/latest/main.py
     deps: [demo_batch_processing]
     outputs: [recovered, gateway_status, batch_ref, status]
+    # Per-job retry: exponential backoff (see skills/dagychu/pipeline-yaml.md).
+    # Demo defaults force_success=true so the first run succeeds; set force_success=false
+    # in task input to observe attempt #1 fail then recover on retry.
+    retry_policy:
+      mode: exponential
+      max_attempts: 3
+      delay_sec: 2
+      max_delay_sec: 30
     inputs:
       force_success:
         merge:

@@ -7,7 +7,7 @@ In the **Enterprise** client artifact this file is copied to **`README.md`**. In
 ## Requirements
 - Docker Engine
 - Docker Compose v2 (`docker compose`)
-- A GitHub Personal Access Token (PAT) with **read:packages** to pull from GHCR.
+- Outbound access to pull the pinned image from GHCR (Community: public `ghcr.io/raideria-software/dagychu` — no GitHub account, PAT, or `docker login` required)
 
 ## Files
 - `docker-compose.yml` — production stack (pinned `ghcr.io/...:<version>` images; rendered at release from the repo template)
@@ -15,7 +15,7 @@ In the **Enterprise** client artifact this file is copied to **`README.md`**. In
 - `dagychu-instance.yaml` — instance settings (monitoring tabs, bootstrap, `ui.legal`); edit next to `.env`. `update.sh` does not overwrite it
 - `dagychu-instance.template.yaml` — commented reference template
 - `.env.example` — full template (community and enterprise). `install.sh` copies it to `.env` and generates passwords/tokens
-- `install.sh` — first-time install (GHCR login, generate `.env`, seed `runtime/`, pull images, start services)
+- `install.sh` — first-time install (generate `.env`, seed `runtime/`, pull images, start services)
 - `update.sh` — update to the version pinned in `docker-compose.yml` (appends missing `.env` keys, does not rotate secrets)
 - `reload-projects.sh` — create new `PIPELINE_YAML_DIRS` groups and recreate api/worker/scheduler/ui_backend only
 - `scripts/compose_helpers.sh`, `scripts/recover_db_pressure.sh`, `scripts/generate_env.py`, `scripts/bootstrap_runtime.py`
@@ -199,7 +199,6 @@ Parallel **pipelines (tasks)** require multiple worker **processes**, not only a
 For jobs that run 30–50 minutes, also raise `JOB_TIMEOUT_SECONDS` (e.g. `3600`). Plan host CPU/RAM for `WORKER_REPLICAS × JOB_CONCURRENCY` when using Docker job executor.
 
 ## Security notes
-- Do not save the GHCR token to disk. `install.sh` reads it from stdin and does `docker login`.
 - Keep `.env` private (it contains secrets).
 - Public scheduler launch links are token-based (`/ui/scheduler/webhook/{job_id}`) by design. Treat webhook tokens as secrets: generate per integration, rotate regularly, and revoke (change token / disable job) on suspicion.
 - Keep public exposure on the UI entrypoint only. Core WebSocket paths (for example `/ws/tasks/{task_id}`) are not intended as public scheduler trigger channels.
