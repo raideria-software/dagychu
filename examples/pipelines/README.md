@@ -155,8 +155,8 @@ news_chat:
   output_keys:
     - path: summary.title
       label: Summary
-    - path: summary.wb_message
-      label: WB Message
+    - path: summary.channel_message
+      label: Channel message
     - path: result.status
       label: Status
   tag_color_field: summary.color
@@ -167,7 +167,7 @@ news_chat:
 news_chat:
   output_keys:
     - summary.title
-    - summary.wb_message
+    - summary.channel_message
     - result.status
   tag_color_field: summary.color
 ```
@@ -178,8 +178,8 @@ news:
   keys:
     - path: summary.title
       label: Summary
-    - path: summary.wb_message
-      label: WB Message
+    - path: summary.channel_message
+      label: Channel message
     - path: result.status
       label: Status
   color: summary.color

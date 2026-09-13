@@ -2,7 +2,7 @@
 
 This package deploys **Dagychu** using Docker Compose and **pinned** image tags (no `latest`).
 
-In the **Enterprise** client artifact this file is copied to **`README.md`**. In the **Community** artifact the public product README is `README.md` and this file is shipped as **`CLIENT_SETUP.md`**. Operator Guide, Operations, Releases, and legal documents ship **inside the image** — after install, open **Settings → Documentation** (and **Settings → Legal**). Pipeline-author skills are in this package under `skills/` and also in the UI under **Settings → Skills**. Demo pipelines/jobs ship under `examples/`. Community packs also include `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
+In the **Enterprise** client artifact this file is copied to **`README.md`**. In the **Community** artifact the public product README is `README.md` and this file is shipped as **`CLIENT_SETUP.md`**. **`RELEASES.md`** (changelog) ships in this package so you can review what changed versus your current `VERSION` before upgrading. Operator Guide, Operations, and legal documents ship **inside the image** — after install, open **Settings → Documentation** (and **Settings → Legal**); Releases are also available there for the installed image. Pipeline-author skills are in this package under `skills/` and also in the UI under **Settings → Skills**. Demo pipelines/jobs ship under `examples/`. Community packs also include `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
 
 ## Requirements
 - Docker Engine
@@ -17,6 +17,7 @@ In the **Enterprise** client artifact this file is copied to **`README.md`**. In
 - `.env.example` — full template (community and enterprise). `install.sh` copies it to `.env` and generates passwords/tokens
 - `install.sh` — first-time install (generate `.env`, seed `runtime/`, pull images, start services)
 - `update.sh` — update to the version pinned in `docker-compose.yml` (appends missing `.env` keys, does not rotate secrets)
+- `RELEASES.md` — product changelog (newest first); read before upgrading and compare with your install `VERSION`
 - `reload-projects.sh` — create new `PIPELINE_YAML_DIRS` groups and recreate api/worker/scheduler/ui_backend only
 - `scripts/compose_helpers.sh`, `scripts/recover_db_pressure.sh`, `scripts/generate_env.py`, `scripts/bootstrap_runtime.py`
 - `examples/` — demo pipeline YAML, job seeds, project config template; Enterprise/Pro also include `examples/external_client/` for `/ext/tasks`
@@ -178,10 +179,13 @@ Public exposed port in `.env`:
 All other services (`api`, `scheduler`, `postgres`, `rabbitmq`) communicate only inside Docker network and are not exposed externally in production compose.
 
 ## Updating
-When you receive a **new client package** (new version), replace `docker-compose.yml` (and `install.sh` / `update.sh` / `scripts/` if they changed) and run:
-- `./update.sh`
+When you receive a **new client package** (new version):
 
-**Do not run `./install.sh` on an existing deployment** — it resets `.env` from `.env.example` and generates new secrets. `update.sh` pulls new images, **appends missing keys** from `.env.example` without changing existing secrets, enables `dagychu_system` on enterprise, reapplies `WORKER_REPLICAS` scale, and leaves `dagychu-instance.yaml`, `runtime/`, and database volumes intact. Documentation and the onboarding tour come from the new image.
+1. Read **`RELEASES.md`** for versions newer than your install’s `VERSION` (also on the Community public repo).
+2. Replace `docker-compose.yml` (and `install.sh` / `update.sh` / `scripts/` / `RELEASES.md` if they changed).
+3. Run `./update.sh`.
+
+**Do not run `./install.sh` on an existing deployment** — it resets `.env` from `.env.example` and generates new secrets. `update.sh` pulls new images, **appends missing keys** from `.env.example` without changing existing secrets, enables `dagychu_system` on enterprise, reapplies `WORKER_REPLICAS` scale, and leaves `dagychu-instance.yaml`, `runtime/`, and database volumes intact. Guide, Operations, and the onboarding tour come from the new image.
 
 ## Scaling workers
 
@@ -253,7 +257,7 @@ Disabling telemetry prevents Dagychu from sending product telemetry requests. Te
 
 ## After install
 
-Open the UI and use **Settings → Documentation** for Guide, Operations, and Releases of this image version, **Settings → Skills** for pipeline-author skill markdown, and **Settings → Legal** for Terms, Privacy, and Notices.
+Open the UI and use **Settings → Documentation** for Guide, Operations, and Releases of this image version (pack **`RELEASES.md`** is the same changelog for pre-upgrade review), **Settings → Skills** for pipeline-author skill markdown, and **Settings → Legal** for Terms, Privacy, and Notices.
 
 Copy useful extra demos from **`examples/`** into `runtime/<project>/` if needed. Demo pipelines are already seeded under **`runtime/demo/`**.
 

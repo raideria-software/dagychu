@@ -144,7 +144,8 @@ See **Administration → Product Telemetry** in Dagychu for the current telemetr
 ## Documentation
 
 - This README and [CLIENT_SETUP.md](CLIENT_SETUP.md)
-- In a running instance: **Settings → Documentation** and **Settings → Legal**
+- [RELEASES.md](RELEASES.md) — changelog (newest first); compare with your install’s `VERSION` **before** `./update.sh`
+- In a running instance: **Settings → Documentation** (Guide, Operations, Releases) and **Settings → Legal**
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Licensing and distribution

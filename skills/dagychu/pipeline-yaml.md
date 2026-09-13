@@ -11,7 +11,7 @@ display_name:                   # optional human title (string or list)
   - Sales report
 description:                    # optional multi-line blurb for Pipelines registry
   - Builds the marketplace sales report
-  - from WB and OZON exports
+  - from connected channel exports
 _meta:
   launch_order_mode: declaration   # declaration | auto_lpt
 jobs:

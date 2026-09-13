@@ -33,6 +33,10 @@ fi
 
 echo "Using compose file: ${COMPOSE_FILE}" >&2
 
+if [[ -f "RELEASES.md" ]]; then
+  echo "Tip: review RELEASES.md against your install VERSION before continuing." >&2
+fi
+
 if [[ ! -f ".env" ]]; then
   echo "Missing .env. Run install.sh first (or create .env from .env.example)." >&2
   exit 1
