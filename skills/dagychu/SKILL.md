@@ -33,7 +33,7 @@ If unclear, read the user's `PIPELINE_YAML_DIRS`, `runtime/` tree, and `.env` be
 
 1. **YAML on disk is the source of truth** for pipeline DAGs — not UI-only edits. The database syncs from disk.
 2. **Job `path:`** resolves relative to the **pipeline group root**, not `pipelines/`.
-3. **Worker contract**: job reads JSON from **stdin**, writes **one JSON object** to **stdout** on success; non-zero exit on failure. Logs go to **stderr**. Large UTF-8 JSON: `jobs/_lib/dagychu_stdio.py` (`write_stdout_json`).
+3. **Worker contract**: job reads JSON from **stdin**; on success exit 0 and emit a JSON object on **stdout** (may mix log lines — worker prefers the last JSON object or a `__JOB_OUTPUT_JSON__` marker). Prefer `write_stdout_json` / stderr for diagnostics. Non-zero exit on failure. Large UTF-8 JSON: `jobs/_lib/dagychu_stdio.py`.
 4. **`model.yaml`** sits next to the job script; drives UI templates, schemas, and News summary paths.
 5. **`dagychu-config.yaml`** at **group root** (same level as `pipelines/`) — required to validate/connect when the execution gate is on or `JOB_EXECUTOR=docker`.
 6. **Do not** put `dagychu-instance.yaml` inside a group root — it lives at deployment root (next to `.env`).
@@ -60,7 +60,7 @@ Full details and examples: [project-setup.md](project-setup.md) & [pipeline-yaml
 ### B) Create or change a job
 
 ```
-- [ ] Script: stdin JSON → validate → work → one JSON object on stdout (`write_stdout_json` or `print(json.dumps(...))`)
+- [ ] Script: stdin JSON → validate → work → JSON payload on stdout (`write_stdout_json` preferred; logs may share stdout or go to stderr)
 - [ ] model.yaml: template, input_schema, output_schema; optional news_chat
 - [ ] Ensure path in pipeline YAML matches layout under group root
 - [ ] Python-only edits: no DB sync needed; rerun task to pick up code

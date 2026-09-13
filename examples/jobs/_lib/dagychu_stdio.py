@@ -7,8 +7,9 @@ read keys from ``output_json`` after the worker captures **raw bytes**.
 Copy this file into your group (``jobs/_lib/dagychu_stdio.py``) or keep it on
 ``PYTHONPATH`` as ``jobs._lib.dagychu_stdio``.
 
-Logs and ``print`` diagnostics belong on **stderr** (or ``logging`` to stderr)
-so they do not mix with the JSON object on stdout.
+Prefer ``write_stdout_json`` for the result payload. Logs may share stdout
+(the worker parses mixed stdout), but noisy diagnostics are clearer on
+**stderr** (or ``logging`` to stderr).
 """
 
 from __future__ import annotations

@@ -23,7 +23,7 @@
 |---------|--------------|-----|
 | `No such file` for script | `path:` wrong relative to **group root** | Correct path; verify file on mounted volume |
 | `ModuleNotFoundError` | `JOB_APP_ROOT` / package layout | Align imports and `JOB_APP_ROOT` |
-| Invalid JSON / empty stdout | Script prints logs before JSON or crashes | Only one JSON object on stdout; logs to **stderr** |
+| Invalid JSON / empty stdout | Script crashes, or stdout has no parseable JSON object | Prefer `write_stdout_json` / end with a JSON object (or `__JOB_OUTPUT_JSON__` + body); put diagnostics on **stderr** when unsure |
 | U+FFFD / replacement character in stdout | `print(json.dumps)` / TextIOWrapper split, or `response.text` already poisoned | Use `examples/jobs/_lib/dagychu_stdio.py`; do not put HTTP `.text` into stdout JSON without a clean encode |
 | Input key missing | Pipeline `inputs:` wiring | Match `outputs:` upstream; check merge `priority` |
 | Wrong stdin shape | `initial_input_json` does not match `template` | Fix task JSON; for entrance jobs use `{"params": {...}}` |

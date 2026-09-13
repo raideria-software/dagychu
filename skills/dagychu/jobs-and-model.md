@@ -23,7 +23,7 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
-`print(json.dumps(..., ensure_ascii=False))` goes through TextIOWrapper and can split a multibyte character; the worker then fails the job with U+FFFD. `write_stdout_json` avoids that. Downstream jobs still read **keys from `output_json`**, not the stdout stream.
+`print(json.dumps(..., ensure_ascii=False))` goes through TextIOWrapper and can split a multibyte character; the worker then fails the job with U+FFFD. `write_stdout_json` avoids that and is the safest way to emit the payload. Stdout may also mix log lines with JSON: the worker extracts the last JSON object, or the body after a `__JOB_OUTPUT_JSON__` marker. Pure JSON-only stdout still works. Prefer **stderr** for noisy diagnostics. Downstream jobs still read **keys from `output_json`**, not the stdout stream.
 
 On failure the worker stores the exception **and** captured stdout/stderr in the job log (`=== STDOUT ===` / `=== STDERR ===`). The UI error box shows a tail of those streams.
 
