@@ -2,7 +2,7 @@
 
 This package deploys **Dagychu** using Docker Compose and **pinned** image tags (no `latest`).
 
-In the **Enterprise** client artifact this file is copied to **`README.md`**. In the **Community** artifact the public product README is `README.md` and this file is shipped as **`CLIENT_SETUP.md`**. **`RELEASES.md`** (changelog) ships in this package so you can review what changed versus your current `VERSION` before upgrading. Operator Guide, Operations, and legal documents ship **inside the image** — after install, open **Settings → Documentation** (and **Settings → Legal**); Releases are also available there for the installed image. Pipeline-author skills are in this package under `skills/` and also in the UI under **Settings → Skills**. Demo pipelines/jobs ship under `examples/`. Community packs also include `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
+In the **Enterprise** client artifact this file is copied to **`README.md`**. In the **Community** artifact the public product README is `README.md` and this file is shipped as **`CLIENT_SETUP.md`**. Operator docs **`GUIDE.md`**, **`OPERATIONS.md`**, **`EDITION_COMPARISON.md`**, and **`RELEASES.md`** / **`CHANGELOG.md`** ship in this package (same text as **Settings → Documentation**). Pipeline-author skills are under `skills/`; demo pipelines/jobs under `examples/`. Community packs also include `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, and `CONTRIBUTING.md`.
 
 ## Requirements
 - Docker Engine

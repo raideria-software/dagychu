@@ -6,6 +6,8 @@ Dagychu helps engineering and data teams define repeatable workflows, run them o
 
 Dagychu Community is the **free self-hosted edition of Dagychu**, developed and maintained by Raideria LLC. It is distributed as versioned container images together with a public install/distribution repository.
 
+**Changelog:** see [RELEASES.md](RELEASES.md) (same content as [CHANGELOG.md](CHANGELOG.md)) — newest first; compare with your install’s `VERSION` before `./update.sh`.
+
 ## Why Dagychu
 
 Production automation often starts simply: Python scripts, Bash commands, cron jobs, containers, and internal services. As the number of workflows grows, teams also need to know:
@@ -19,6 +21,12 @@ Production automation often starts simply: Python scripts, Bash commands, cron j
 - how external systems can trigger work.
 
 Dagychu provides a self-hosted control plane for those operations.
+
+## Bring existing scripts first
+
+Existing standalone Python and Bash scripts can run without source-code changes: declare the script path and runtime in pipeline YAML, and Dagychu tracks its exit status and logs. Add Dagychu's JSON stdin/stdout contract only when scripts must exchange structured values, accept task parameters, or expose fields to downstream jobs and reports.
+
+This distinction supports gradual adoption: start by replacing scattered cron/manual execution with a visible control plane, then add structured integration where it creates value.
 
 ## What you can do
 
@@ -78,14 +86,14 @@ Requirements: Docker Engine and Docker Compose v2, plus outbound access to pull 
 The stack uses `docker-compose.yml` (pinned `ghcr.io/raideria-software/dagychu:<version>`). Optional overlay when jobs run via the host Docker engine: `docker-compose.docker-sock.yml` (`JOB_EXECUTOR=docker`).
 
 ```bash
-docker pull ghcr.io/raideria-software/dagychu:3.4.3
+docker pull ghcr.io/raideria-software/dagychu:3.4.4
 ```
 
 Demo pipelines are seeded under `runtime/demo/` on first install. Runs require a **connected** project: open **Administration → Projects**, validate and connect the group before the first run (`execution.project_execution_gate_enabled` in `dagychu-instance.yaml`). Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
 
 After install, use `./update.sh` for a newer pack/image tag. Do **not** run `./install.sh` again on an existing deployment (it regenerates secrets).
 
-Use explicit version tags in production rather than `latest`. Current product line: **3.4.3**.
+Use explicit version tags in production rather than `latest`. Current product line: **3.4.4**.
 
 ## What this repository contains
 
@@ -143,9 +151,12 @@ See **Administration → Product Telemetry** in Dagychu for the current telemetr
 
 ## Documentation
 
+- **[RELEASES.md](RELEASES.md)** / **[CHANGELOG.md](CHANGELOG.md)** — what changed per version (also **Settings → Documentation → Releases** after install)
+- [GUIDE.md](GUIDE.md) — operator guide (install → pipelines → jobs → scheduler → logs → recovery)
+- [OPERATIONS.md](OPERATIONS.md) — backup, update, rollback, health checks, troubleshooting
+- [EDITION_COMPARISON.md](EDITION_COMPARISON.md) — Community vs Enterprise
 - This README and [CLIENT_SETUP.md](CLIENT_SETUP.md)
-- [RELEASES.md](RELEASES.md) — changelog (newest first); compare with your install’s `VERSION` **before** `./update.sh`
-- In a running instance: **Settings → Documentation** (Guide, Operations, Releases) and **Settings → Legal**
+- In a running instance: **Settings → Documentation** and **Settings → Legal**
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Licensing and distribution
@@ -165,6 +176,9 @@ Dagychu is developed and maintained by **Raideria LLC (Armenia)**.
 The public GitHub organization and repository are distribution and collaboration channels. They do not change ownership of Dagychu intellectual property.
 
 ## Links
+
+- [Dagychu product and Enterprise](https://software.raideria.com/products/dagychu) — capabilities, buyer guides, and live-demo access.
+- [Operational reliability pilot](https://software.raideria.com/products/dagychu/operational-reliability-pilot) — evaluate one real workflow with agreed success, failure, investigation, and recovery evidence.
 
 - **Website:** https://software.raideria.com/dagychu
 - **Raideria:** https://raideria.com

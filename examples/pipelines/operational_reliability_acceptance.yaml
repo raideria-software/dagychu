@@ -1,0 +1,26 @@
+pipeline_name: operational_reliability_acceptance
+pipeline_tags: [example, acceptance, reliability, recovery]
+jobs:
+  - job_name: existing_script_unchanged
+    ui_name: Existing script, unchanged
+    path: runtime_seed/jobs/operational_acceptance_legacy/latest/main.py
+    deps: []
+
+  - job_name: controlled_retry_recovery
+    ui_name: Controlled failure and recovery
+    path: runtime_seed/jobs/demo_retry_recovery/latest/main.py
+    deps: [existing_script_unchanged]
+    outputs: [recovered, gateway_status, batch_ref, status]
+    retry_policy:
+      mode: exponential
+      max_attempts: 3
+      delay_sec: 2
+      max_delay_sec: 30
+    inputs:
+      force_success:
+        merge:
+          - from: initial
+            key: force_success
+          - from: const
+            value: false
+        priority: [initial, const]

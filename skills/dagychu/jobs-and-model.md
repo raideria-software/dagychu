@@ -11,6 +11,11 @@ Preferred tree under group root:
   jobs/<domain>/<job_name>/v1/main.py          # optional versioned impl
 ```
 
+Existing standalone Python or Bash scripts can run without source-code changes when their exit code is the only contract you need. Point pipeline YAML at the script and configure its runtime. Empty stdout becomes `{}`; ordinary non-JSON stdout is retained as `_dagychu_unparsed_stdout` and in the job log.
+
+Add the structured JSON contract only when a job consumes Dagychu task input, sends values to downstream jobs, or exposes fields to reports:
+
+```python
 from jobs._lib.dagychu_stdio import read_stdin_json, write_stdout_json
 
 
@@ -22,6 +27,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+```
 
 `print(json.dumps(..., ensure_ascii=False))` goes through TextIOWrapper and can split a multibyte character; the worker then fails the job with U+FFFD. `write_stdout_json` avoids that and is the safest way to emit the payload. Stdout may also mix log lines with JSON: the worker extracts the last JSON object, or the body after a `__JOB_OUTPUT_JSON__` marker. Pure JSON-only stdout still works. Prefer **stderr** for noisy diagnostics. Downstream jobs still read **keys from `output_json`**, not the stdout stream.
 
