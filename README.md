@@ -1,12 +1,18 @@
 # Dagychu Community
 
+**Current version: 3.4.5**
+
 **Self-hosted execution control for production jobs and pipelines.**
 
 Dagychu helps engineering and data teams define repeatable workflows, run them on their own infrastructure, and operate executions from one place — without moving workload code into a hosted orchestration service.
 
 Dagychu Community is the **free self-hosted edition of Dagychu**, developed and maintained by Raideria LLC. It is distributed as versioned container images together with a public install/distribution repository.
 
-**Changelog:** see [RELEASES.md](RELEASES.md) (same content as [CHANGELOG.md](CHANGELOG.md)) — newest first; compare with your install’s `VERSION` before `./update.sh`.
+## What’s new / upgrades
+
+- **This pack’s version** is in the root **`VERSION`** file (and the image tag in `docker-compose.yml`). Current line: **3.4.5**.
+- **Full changelog:** [RELEASES.md](RELEASES.md) (same text as [CHANGELOG.md](CHANGELOG.md)) — newest first. Read versions newer than your install before `./update.sh`.
+- After install, the same notes are in **Settings → Documentation → Releases**.
 
 ## Why Dagychu
 

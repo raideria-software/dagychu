@@ -1,90 +1,10 @@
 # Dagychu — releases
 
-This document describes product release lines (current **3.4.5**) and the shipping process. Version notes are **newest first**. For exact commit ↔ image tag mapping, verify against the **`release`** branch, the repo **`VERSION`** file, and GitHub Actions artifacts.
+**Current version: 3.4.5**
 
-**Edition labels in version notes:** bullets that are **Enterprise-only** are marked **`(Enterprise)`**. Unmarked bullets ship in **both** Community and Enterprise for that release. Capability matrix (what Community never gets): pack / UI **`EDITION_COMPARISON.md`** and **Settings → License**. Do not assume a feature from this changelog is available on Community unless it is unmarked or the comparison table says so.
+Product release notes, **newest first**. Compare with your install’s `VERSION` file before `./update.sh`. The same text ships as pack **`RELEASES.md`** / **`CHANGELOG.md`** and in **Settings → Documentation → Releases**.
 
-## How a release is built
-
-1. Set semantic version in repo root **`VERSION`** (`X.Y.Z` or `vX.Y.Z`).
-2. [`.github/workflows/release-ghcr.yml`](../.github/workflows/release-ghcr.yml) runs on push to **`main`**.
-3. Docker images are pushed to GHCR with tag **exactly that version** (no `latest`), one image per edition:
-   - **Enterprise (full, production):** `ghcr.io/<owner>/<repo>:<version>` — unchanged naming for existing installs;
-   - **Community:** `ghcr.io/raideria-software/dagychu:<version>` for installs (client pack / `docker-compose.community.prod.yml`). CI still builds `ghcr.io/<owner>/<repo>-community:<version>` in this org; retag and publish with [`scripts/publish_community_public.sh`](../scripts/publish_community_public.sh).
-4. Client artifacts (see [`docs/editions/EDITIONS.md`](editions/EDITIONS.md)):
-   - **`client-<version>`** — enterprise pack (`dist/client/<version>/`);
-   - **`client-community-<version>`** — community pack.
-5. **LLC verify compose** (not the user zip): `dist/verify-llc/<edition>/<version>/docker-compose.yml` pins the same templates to `ghcr.io/raideria-llc-armenia/dagychu` / `dagychu-community`. CI uploads `verify-llc-<edition>-<version>`. From the repo: `scripts/compose_verify_llc.sh community|enterprise pull` then `up -d`.
-
-### Publish Community image to another GitHub org (GHCR)
-
-CI today always pushes Community as `ghcr.io/${GITHUB_REPOSITORY}-community:<version>` (same org as this repo). `GITHUB_TOKEN` cannot write packages in a **different** org.
-
-**Preferred:** retag the built Community image and rebuild the public pack:
-
-```bash
-scripts/publish_community_public.sh --version 3.4.2
-```
-
-The script prompts for version if omitted, then (each step confirmable) `docker pull` of `ghcr.io/raideria-llc-armenia/dagychu-community:<version>`, tag/push `ghcr.io/raideria-software/dagychu:<version>`, `prepare_client_pack.sh` with that image, and optional git publish to `github.com/raideria-software/dagychu`.
-
-**Automatic (later, in CI):** create a PAT or GitHub App in the **target** org with `write:packages` (and `read:packages`). Store it as repo secret `GHCR_COMMUNITY_TOKEN`. For the community matrix job only: log in with that secret and set `IMAGE=ghcr.io/<other-org>/<image-name>`, then pass the same `--image` into `scripts/prepare_client_pack.sh` so `install.sh` pulls from that registry. Enterprise can stay on the current org.
-
-**Preferred:** from the repo root, after the Community image exists in this org:
-
-```bash
-scripts/publish_community_public.sh --version 3.4.2
-```
-
-The script asks which steps to run: retag/push `ghcr.io/raideria-software/dagychu:<version>`, rebuild `dist/client-community/<version>`, and optionally commit that pack to `github.com/raideria-software/dagychu`.
-
-**Manual (same idea):** from the repo root, with Docker logged in to GHCR as a user who can push to the target org:
-
-```bash
-# Target package, e.g. ghcr.io/my-community-org/dagychu
-OTHER_ORG="my-community-org"
-IMAGE_NAME="dagychu"
-VERSION="$(tr -d '[:space:]' < VERSION | sed 's/^v//')"
-IMAGE="ghcr.io/${OTHER_ORG}/${IMAGE_NAME}"
-TAG="${IMAGE}:${VERSION}"
-
-# PAT in the *target* org: write:packages (classic) or Fine-grained: Packages write
-echo "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
-
-docker build -f Dockerfile.community -t "${TAG}" \
-  --build-arg DAGYCHU_EDITION=community \
-  --build-arg DAGYCHU_VERSION="${VERSION}" \
-  --build-arg VITE_DAGYCHU_EDITION=community \
-  --build-arg VITE_DASHBOARD_WS_ENABLED=false \
-  .
-
-docker push "${TAG}"
-
-# Client zip that pulls this image (not the default -community suffix on this repo):
-scripts/prepare_client_pack.sh \
-  --edition community \
-  --version "${VERSION}" \
-  --image "${IMAGE}" \
-  --output "dist/client-community/${VERSION}" \
-  --compose docker-compose.community.prod.yml \
-  --instance-yaml dagychu-instance.yaml \
-  --skip-system
-```
-
-Installers need a PAT with **`read:packages`** on **that** org (`docker login ghcr.io` in `install.sh`). Link the GHCR package to a repo in the target org (package Settings) if GitHub asks for visibility / permissions.
-
-Each pack contains:
-   - `docker-compose.yml` (from `docker-compose.prod.yml` with image + version substituted);
-   - optional `docker-compose.docker-sock.yml`;
-   - `install.sh`, `update.sh`, `scripts/`, `.env.example`;
-   - `dagychu-instance.yaml` + `dagychu-instance.template.yaml`;
-   - **`RELEASES.md`** / **`CHANGELOG.md`** — this changelog;
-   - **`GUIDE.md`**, **`OPERATIONS.md`**, **`EDITION_COMPARISON.md`** — Community-public operator docs (same text as Settings → Documentation);
-   - `README.md` — Enterprise: from [`CLIENT_SETUP.md`](../CLIENT_SETUP.md). Community: from [`docs/community/github/README.md`](../community/github/README.md), plus `CLIENT_SETUP.md`, `LICENSE.md`, `NOTICE.md`, `TRADEMARKS.md`, `SECURITY.md`, `CONTRIBUTING.md`.
-
-   Legal documents, locales, and the onboarding tour ship **in the image**. Guide / Operations / Releases / Edition comparison are both in the pack and baked into the image from [`docs/community-public/`](../community-public/) + this file.
-
-Client install steps: [`CLIENT_SETUP.md`](../CLIENT_SETUP.md).
+**Edition labels:** bullets marked **`(Enterprise)`** are Enterprise-only for that version. Unmarked bullets ship in **both** Community and Enterprise. Capability matrix: pack / UI **`EDITION_COMPARISON.md`** and **Settings → License**.
 
 ## Service matrix
 
@@ -150,7 +70,7 @@ The repo **`VERSION`** file: **3.4.4** (previous line **3.4.3**).
 
 **Highlights:**
 
-- **Community docs canon:** `docs/community-public/` (`GUIDE.md`, `OPERATIONS.md`, `EDITION_COMPARISON.md`) plus this `RELEASES.md` bake to Settings → Documentation and ship in every client pack / Community public repository (`CHANGELOG.md` aliases `RELEASES.md`). CI lint + sync gates prevent UI/pack drift and block internal/Pro/exactly-once claims.
+- **Community docs canon:** `docs/community-public/` (`GUIDE.md`, `OPERATIONS.md`, `EDITION_COMPARISON.md`) plus this `RELEASES.md` bake to Settings → Documentation and ship in every client pack / Community public repository (`CHANGELOG.md` aliases `RELEASES.md`). CI lint + sync gates prevent UI/pack drift and block internal references or overstated delivery claims.
 - **Trust contracts** in Guide/Operations: unchanged Python/Bash jobs; JSON for structured I/O only; PostgreSQL primary state; ClickHouse optional reports; no exactly-once for external side effects.
 - **Job Detail — FAILED input:** stripped task lists no longer treat `error_text` as full IO; the UI fetches `getJobRun` so Input shows the stdin that was used.
 - **Job Detail — new mid-pipeline job:** empty / `{}` “Rerun with JSON” omits override so the worker infers stdin from upstream SUCCEEDED outputs and task initial input (same as Run last inputs).
