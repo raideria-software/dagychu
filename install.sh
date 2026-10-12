@@ -305,11 +305,17 @@ preflight_bind_paths() {
   fi
 }
 
-runtime_host_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}/runtime').resolve())")"
+runtime_host_abs="$(resolve_runtime_host_abs)"
 repo_host_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}').resolve())")"
 pipeline_yaml_dirs="$(env_get PIPELINE_YAML_DIRS)"
 ensure_runtime_layout "${runtime_host_abs}" "${pipeline_yaml_dirs}"
-env_set_if_empty "DAGYCHU_DOCKER_BIND_RUNTIME_HOST" "${runtime_host_abs}"
+ensure_snapshot_host_dir
+# Compose mounts DAGYCHU_RUNTIME_HOST → /srv/runtime; docker executor needs the same host path.
+if [[ -n "$(env_get DAGYCHU_RUNTIME_HOST)" ]]; then
+  env_set_value "DAGYCHU_DOCKER_BIND_RUNTIME_HOST" "${runtime_host_abs}"
+else
+  env_set_if_empty "DAGYCHU_DOCKER_BIND_RUNTIME_HOST" "${runtime_host_abs}"
+fi
 env_set_if_empty "DAGYCHU_DOCKER_BIND_REPO_HOST" "${repo_host_abs}"
 # First install: empty Postgres needs DDL. Compose defaults INIT_DB_STARTUP_MODE=verify
 # (read-only); without migrate (or API verify→migrate fallback) /ready never succeeds.
@@ -321,7 +327,8 @@ if [[ -z "${job_executor}" ]]; then
 fi
 if [[ "${job_executor}" == "docker" ]]; then
   if [[ -f "${ROOT_DIR}/docker-compose.docker-sock.yml" ]]; then
-    echo "JOB_EXECUTOR=docker → including docker-compose.docker-sock.yml (host docker.sock)." >&2
+    echo "JOB_EXECUTOR=docker → including docker-compose.docker-sock.yml (filtered docker_proxy)." >&2
+    ensure_dagychu_docker_sock
   else
     echo "ERROR: JOB_EXECUTOR=docker requires docker-compose.docker-sock.yml next to the compose file." >&2
     echo "Copy it from the client package, or set JOB_EXECUTOR=local." >&2

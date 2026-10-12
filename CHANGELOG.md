@@ -1,6 +1,8 @@
 # Dagychu — releases
 
-This document describes product release lines (current **3.4.4**) and the shipping process. Version notes are **newest first**. For exact commit ↔ image tag mapping, verify against the **`release`** branch, the repo **`VERSION`** file, and GitHub Actions artifacts.
+This document describes product release lines (current **3.4.5**) and the shipping process. Version notes are **newest first**. For exact commit ↔ image tag mapping, verify against the **`release`** branch, the repo **`VERSION`** file, and GitHub Actions artifacts.
+
+**Edition labels in version notes:** bullets that are **Enterprise-only** are marked **`(Enterprise)`**. Unmarked bullets ship in **both** Community and Enterprise for that release. Capability matrix (what Community never gets): pack / UI **`EDITION_COMPARISON.md`** and **Settings → License**. Do not assume a feature from this changelog is available on Community unless it is unmarked or the comparison table says so.
 
 ## How a release is built
 
@@ -94,6 +96,49 @@ Client install steps: [`CLIENT_SETUP.md`](../CLIENT_SETUP.md).
 | **ui_backend** | Proxies to Core + Scheduler; reads job logs from disk; serves built React UI |
 | **postgres** | Tasks, runs, pipelines, users/sessions, audit |
 | **rabbitmq** | Worker queue |
+
+---
+
+## 3.4.5
+
+**Focus:** safer Docker executor for Compose; **(Enterprise)** table-report / output-view pack; global find by job name; entity notes; env without `dagychu_system`; ClickHouse report sync pool hardening **(Enterprise UI / BI pack)**; Admin **Config Snapshot + Restore**.
+
+The repo **`VERSION`** file: **3.4.5** (previous line **3.4.4**).
+
+**Highlights:**
+
+- **Config Snapshot + Restore (Admin → Snapshots):** export `dagychu-config-snapshot-v1.json` (RBAC, users, token *names*, projects/vars without secret values, pipelines, tasks, scheduler plans, notifications without tokens, maintenance, dashboards/reports/presets, entity notes nested with parents, creator subs, telemetry preference). Selective non-destructive merge; **never deletes** entities absent from the snapshot; **preserves public IDs** (`task_id` UUID, `scheduler_jobs.id` / webhook URL, `pipeline_group`+`name`, parallel parent links) so external integrations keep working after clone/restore. Preview returns `secrets_required[]` (webhook secrets, project secret vars, notification tokens, API tokens, ClickHouse env, instance `.env` checklist) — Apply is not blocked; operator re-enters secrets in Admin/Scheduler afterward. Archives land on the **host** via compose bind **`DAGYCHU_SNAPSHOT_HOST`** (default `./snapshots`) → container `/var/lib/dagychu/snapshots` on `api`; `install.sh` / `update.sh` create the host dir. Optional **`DAGYCHU_SNAPSHOT_SIGNING_KEY`**: export adds HMAC-SHA256 `integrity`; with key set, tampered/stripped signatures are rejected; **without** the key, restore remains allowed with an explicit “could not verify” warning (DR onto a new instance). Retention `DAGYCHU_SNAPSHOT_RETENTION` (default 14); optional `DAGYCHU_SNAPSHOT_REMOTE_PUT_URL`. Companion files (`dagychu-instance.yaml`, `runtime/**` job code, host `.env`) stay on disk — checklist only. Job-run history / audit / sessions are out of scope.
+- **`docker_proxy` only mounts the Engine socket** (`docker-compose.docker-sock.yml`). api / worker / worker_deadline_reserve use `DOCKER_HOST=tcp://docker_proxy:2375` with an allowlisted Docker API (no raw sock in those containers).
+- **`DAGYCHU_DOCKER_SOCK` auto-detect** in `install.sh` / `update.sh` / `update-dev.sh` via `scripts/detect_docker_sock.sh` (rootless `/run/user/$UID/docker.sock` vs rootful `/var/run/docker.sock`) — avoids Connect failures when the CLI context is rootless but compose mounted the system sock.
+- Hardcoded `/var/run/docker.sock` mounts removed from community/dev base compose; Docker executor always goes through the overlay.
+- **(Enterprise) Table report data export:** UI snippets use **`/api/ui/table-reports/{table_id}/{report_id}/data`** (ui_backend proxies Core). Fixes empty HTML from the SPA catch-all when calling the old `/table-reports/.../data` path on the UI origin. Community builds show an upgrade gate for full-page `view=table` reports.
+- **(Enterprise) Report provenance:** BI / Expand Table chrome shows source (job output vs registry table), creator, API/CH flags, and links into Job Detail when scoped.
+- **Global find:** `find:` indexes **pipeline job names**; Enter / click opens Job Detail (or Pipelines focus when no task exists yet).
+- **(Enterprise) Output view designer:** Job Detail **actions rail** (Create output view); designer starts with **no** JSON paths selected; nested object tree; arrays **Keep JSON** vs **Explode to rows** (cartesian product when multiple); **min job run id** cutoff; Open/Edit honor `selectedJsonPaths` / explode modes / cutoff. Full-page Open uses the Enterprise report surface.
+- **Entity notes:** polymorphic `entity_notes` (one note per task / scheduler plan / pipeline) with severity icon + Markdown modal (job-run notes unchanged). View mode shows rendered Markdown + severity border; edit via pencil. Author is the signed-in user (not editable). Attention = red, Debug = gray. Space key works in the note textarea (no longer stolen by table row activation).
+- **Entity notes INSERT fix:** early `entity_notes` / `job_run_notes` DDL used `INTEGER PRIMARY KEY` without SERIAL on Postgres; creating a note returned Core 500 (UI **502**). Migrate now uses SERIAL + idempotent sequence repair; verify-mode detects the broken PK and falls back to migrate.
+- **(Enterprise) Role project visibility:** Admin Roles matrix can set **visible projects** (`read_groups`) for `pipelines` read or full. Denied projects are filtered server-side across pipelines, tasks, job logs, audit/changelog, overview, monitoring, scheduler, notifications, and table reports.
+- **Task Cloud RBAC:** `/analytics/tag-cloud` and news-summary honor `read_groups` (no more “all projects” leak for limited roles); project picker only promotes allowlisted groups.
+- **New UI nav:** when **Tasks** is active, sidebar shows nested **Task Cloud** / **Registry**; when **Logs** is active, nested **Tasks log** / **Change log**. URL params `tasks_tab` / `logs_tab`.
+- **Task Cloud default fit:** initial Fit View uses ~half previous zoom (`FIT_SCALE_FACTOR=0.5`).
+- **Global find:** always loads a flat ACL task list (not cleared by group-by-pipeline); navigate denies with a clear message when the target screen is hidden for the role.
+- **Settings split:** Settings nav is always available; personal sections (appearance, locale, account, …) for everyone; **License** / **Skills** still require the `settings` RBAC block.
+- **Read-only UX:** write actions stay visible and explain **read-only mode** on click (Scheduler plan rail, Task registry edit, Investigation Run/Terminate, Job Detail rerun, entity note save).
+- **Job Detail full log:** Copy + Download `.txt` for the complete on-disk log (not only the visible chunk).
+- **Env generation:** `.env.example` / `generate_env` no longer append **`dagychu_system`** to `PIPELINE_YAML_DIRS` (builtin group remains in-image for old installs).
+- **External projects root:** optional **`DAGYCHU_RUNTIME_HOST`** (default `./runtime`) for the compose bind into container `/srv/runtime` — e.g. host `/srv/app` beside the pack — without changing in-container paths. Unset keeps existing `./runtime` installs unchanged.
+- **(Enterprise) ClickHouse report sync:** per-report DB sessions (no Session across `asyncio.to_thread`); pool timeout / backoff without crashing the loop. Sync is part of the saved BI report pack (Community has inline tables only).
+- **Scheduler create plan 404:** after pipeline ACL, Core `GET /tasks/{id}` returned 404 for the service token (`pipelines: none`). Plan create validated task existence via that call and failed silently in production UI. Create now checks the shared `tasks` table; seed grants service role `pipelines: full` so engine reconcile / dispatch keep working. Create/save errors also surface in the plan modal + toast.
+- **Config Snapshot HMAC 422 on Preview:** browser `JSON.stringify` collapses whole floats (`1.0`→`1`) and broke integrity after upload/archive load. Signing now canonicalizes numbers; verify accepts legacy signatures; **Load into preview / Apply** for Local archives run on the server (`…/archives/{name}/preview|apply`) so the JSON never round-trips through the browser. Error text includes a short key fingerprint to confirm the api container has the expected `DAGYCHU_SNAPSHOT_SIGNING_KEY`.
+- **Config Snapshot UX:** quieter Snapshots tab (archives first, schedule collapsed); archive list shows contents summary + diff vs previous; **pin** (never purged by retention / blocked from delete) and **delete**; soft-deleted tasks show as **restore** (undelete) instead of a vague warning; Admin retention edits stick (saved `policy.json` wins over `DAGYCHU_SNAPSHOT_RETENTION` env).
+
+**Compatibility:** existing installs with `JOB_EXECUTOR=docker` need pack files + `./update.sh` (pulls `tecnativa/docker-socket-proxy:0.3.0` and rewrites `DAGYCHU_DOCKER_SOCK` if the previous path is missing). Report export URLs in saved snippets should be updated to `/api/ui/table-reports/.../data` **(Enterprise)**. New `entity_notes` table is created on migrate. No other API/compose volume data migration.
+
+*Upgrade note:* replace client pack compose/scripts/overlay; run `./update.sh` (creates `./snapshots` or `DAGYCHU_SNAPSHOT_HOST` and recreates `api` with the bind). Confirm Connect / project image build works. Optional: set `DAGYCHU_DOCKER_SOCK` explicitly for rootless. Re-copy API snippets for table reports if you saved the pre-3.4.5 URL **(Enterprise)**. After Config Snapshot restore: re-enter webhook secrets, project secret vars (`PROJECT_VARS_SECRET_KEY`), notification bot/webhook tokens, and new API tokens; ensure runtime pipeline/job code and `.env` match the source instance. If you previously set `DAGYCHU_SNAPSHOT_DIR` to a **host** path, `update.sh` migrates it to `DAGYCHU_SNAPSHOT_HOST`.
+
+*Rollback:* pin pack/image `3.4.4` (or restore previous `docker-compose.docker-sock.yml` that mounted sock into api/worker). Keep volumes. Entity notes table can remain unused. Snapshot archives on disk are inert JSON and can be kept or deleted.
+
+*Known limitations:* proxy allowlist still permits container create/build (required for jobs); prefer dedicated nodes and strong Dagychu auth. Fully isolated remote Docker remains the strongest model (see enterprise DOCKER_EXECUTOR_MODES). Entity notes are single-note-per-object (no threads) in this line. Community operators looking for full-page reports / BI export / output-view Open should see **Settings → License** / **`EDITION_COMPARISON.md`**, not a missing community feature. Config Snapshot does not copy plaintext secrets, pg_dump history, or `runtime/**/jobs` code (Phase 1).
 
 ---
 

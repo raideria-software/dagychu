@@ -161,8 +161,6 @@ def generate_env_file(
     )
 
     pipeline_dirs = USER_PROJECTS
-    if resolved != "community":
-        pipeline_dirs = f"{USER_PROJECTS},{SYSTEM_GROUP}"
     job_executor = "docker"
 
     queue_name = (current.get("QUEUE_NAME") or "task_queue").strip() or "task_queue"
@@ -201,17 +199,8 @@ def merge_missing_keys(example_path: Path, env_path: Path) -> list[str]:
 
 
 def ensure_system_pipeline_group(env_path: Path, *, has_system: bool) -> bool:
-    if not has_system:
-        return False
-    text = env_path.read_text(encoding="utf-8")
-    vals = parse_assignments(text)
-    current = vals.get("PIPELINE_YAML_DIRS", "")
-    if "dagychu_system" in current:
-        return False
-    new_val = f"{current},{SYSTEM_GROUP}" if current.strip() else SYSTEM_GROUP
-    lines = set_assignment_lines(text.splitlines(), "PIPELINE_YAML_DIRS", new_val)
-    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return True
+    """No-op: dagychu_system is no longer injected into client .env (optional on disk only)."""
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:

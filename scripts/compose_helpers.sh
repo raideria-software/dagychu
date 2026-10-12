@@ -17,6 +17,119 @@ resolve_worker_replicas() {
   echo "${raw}"
 }
 
+# Host directory mounted as container /srv/runtime (compose DAGYCHU_RUNTIME_HOST).
+# Default: <pack>/runtime. Absolute override e.g. /srv/app keeps projects outside the pack.
+# Relative paths resolve against the pack root (compose project directory).
+resolve_runtime_host_abs() {
+  local override bind_override default_abs
+  default_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}/runtime').resolve())")"
+  override="$(env_get DAGYCHU_RUNTIME_HOST)"
+  if [[ -n "${override}" ]]; then
+    python3 -c "import pathlib; p=pathlib.Path('''${override}'''); print((p if p.is_absolute() else (pathlib.Path('''${ROOT_DIR}''')/p)).resolve())"
+    return 0
+  fi
+  bind_override="$(env_get DAGYCHU_DOCKER_BIND_RUNTIME_HOST)"
+  if [[ -n "${bind_override}" ]]; then
+    python3 -c "import pathlib; print(pathlib.Path('''${bind_override}''').expanduser().resolve())"
+    return 0
+  fi
+  printf '%s\n' "${default_abs}"
+}
+
+# When DAGYCHU_RUNTIME_HOST is set, keep DAGYCHU_DOCKER_BIND_RUNTIME_HOST on the same absolute path
+# so JOB_EXECUTOR=docker job containers bind the same host tree compose mounts.
+sync_docker_bind_runtime_host_if_needed() {
+  local runtime_abs="$1"
+  local override current
+  override="$(env_get DAGYCHU_RUNTIME_HOST)"
+  [[ -n "${override}" ]] || return 0
+  current="$(env_get DAGYCHU_DOCKER_BIND_RUNTIME_HOST)"
+  if [[ "${current}" == "${runtime_abs}" ]]; then
+    return 0
+  fi
+  python3 - "$ENV_FILE" "DAGYCHU_DOCKER_BIND_RUNTIME_HOST" "${runtime_abs}" <<'PY'
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+key = sys.argv[2]
+new_value = sys.argv[3]
+lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.is_file() else []
+updated = False
+for idx, raw in enumerate(lines):
+    stripped = raw.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw:
+        continue
+    k, _ = raw.split("=", 1)
+    if k.strip() == key:
+        lines[idx] = f"{key}={new_value}"
+        updated = True
+        break
+if not updated:
+    lines.append(f"{key}={new_value}")
+env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+print(f"Synced {key}={new_value} (matches DAGYCHU_RUNTIME_HOST)", file=sys.stderr)
+PY
+}
+
+# Host directory for Config Snapshot archives (compose DAGYCHU_SNAPSHOT_HOST →
+# container /var/lib/dagychu/snapshots on api). Default: <pack>/snapshots.
+resolve_snapshot_host_abs() {
+  local override default_abs
+  default_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}/snapshots').resolve())")"
+  override="$(env_get DAGYCHU_SNAPSHOT_HOST)"
+  if [[ -n "${override}" ]]; then
+    python3 -c "import pathlib; p=pathlib.Path('''${override}'''); print((p if p.is_absolute() else (pathlib.Path('''${ROOT_DIR}''')/p)).resolve())"
+    return 0
+  fi
+  printf '%s\n' "${default_abs}"
+}
+
+# Older packs documented DAGYCHU_SNAPSHOT_DIR as if it were a host path. Compose now
+# always uses /var/lib/dagychu/snapshots in-container; migrate host paths to HOST.
+migrate_legacy_snapshot_dir_to_host() {
+  local legacy host
+  host="$(env_get DAGYCHU_SNAPSHOT_HOST)"
+  [[ -z "${host}" ]] || return 0
+  legacy="$(env_get DAGYCHU_SNAPSHOT_DIR)"
+  [[ -n "${legacy}" ]] || return 0
+  if [[ "${legacy}" == "/var/lib/dagychu/snapshots" ]]; then
+    return 0
+  fi
+  echo "Migrating DAGYCHU_SNAPSHOT_DIR=${legacy} → DAGYCHU_SNAPSHOT_HOST (api mounts host → /var/lib/dagychu/snapshots)." >&2
+  python3 - "$ENV_FILE" "DAGYCHU_SNAPSHOT_HOST" "${legacy}" <<'PY'
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+key = sys.argv[2]
+new_value = sys.argv[3]
+lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.is_file() else []
+updated = False
+for idx, raw in enumerate(lines):
+    stripped = raw.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw:
+        continue
+    k, _ = raw.split("=", 1)
+    if k.strip() == key:
+        lines[idx] = f"{key}={new_value}"
+        updated = True
+        break
+if not updated:
+    lines.append(f"{key}={new_value}")
+env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+print(f"Set {key}={new_value}", file=sys.stderr)
+PY
+}
+
+ensure_snapshot_host_dir() {
+  migrate_legacy_snapshot_dir_to_host
+  local abs
+  abs="$(resolve_snapshot_host_abs)"
+  mkdir -p "${abs}"
+  echo "Config snapshots: ${abs} (host) → /var/lib/dagychu/snapshots (api)." >&2
+}
+
 resolve_worker_deadline_reserve() {
   local raw
   raw="$(env_get WORKER_DEADLINE_RESERVE)"
@@ -278,6 +391,67 @@ warn_if_community_env_incompatible() {
     echo "WARNING: Community package does not ship system/dagychu_system." >&2
     echo "  Update ${ENV_FILE}: PIPELINE_YAML_DIRS=demo=demo,development=development,production=production" >&2
   fi
+}
+
+# Detect Engine socket (rootless-aware) and keep DAGYCHU_DOCKER_SOCK in .env for the
+# docker-compose.docker-sock.yml overlay (only docker_proxy mounts the sock).
+ensure_dagychu_docker_sock() {
+  local je detected current detect_script
+  je="$(env_get JOB_EXECUTOR 2>/dev/null || true)"
+  je="$(printf '%s' "${je:-local}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+  if [[ "${je}" != "docker" ]]; then
+    return 0
+  fi
+  detect_script="${ROOT_DIR}/scripts/detect_docker_sock.sh"
+  if [[ ! -f "${detect_script}" ]]; then
+    echo "WARNING: missing ${detect_script}; defaulting DAGYCHU_DOCKER_SOCK=/var/run/docker.sock" >&2
+    detected="/var/run/docker.sock"
+  else
+    # shellcheck source=scripts/detect_docker_sock.sh
+    # shellcheck disable=SC1090
+    source "${detect_script}"
+    if ! detected="$(detect_docker_sock)"; then
+      echo "ERROR: JOB_EXECUTOR=docker but no Docker socket is reachable." >&2
+      echo "Start Docker (rootful or rootless), or set DAGYCHU_DOCKER_SOCK in ${ENV_FILE}." >&2
+      exit 1
+    fi
+  fi
+  current="$(env_get DAGYCHU_DOCKER_SOCK 2>/dev/null || true)"
+  if [[ -n "${current}" && -S "${current}" ]]; then
+    echo "JOB_EXECUTOR=docker → Docker socket ${current} (DAGYCHU_DOCKER_SOCK; proxy-only mount)." >&2
+    return 0
+  fi
+  if [[ -n "${current}" && ! -S "${current}" ]]; then
+    echo "WARNING: DAGYCHU_DOCKER_SOCK=${current} is missing; replacing with ${detected}" >&2
+  fi
+  if command -v env_set_value >/dev/null 2>&1; then
+    env_set_value "DAGYCHU_DOCKER_SOCK" "${detected}"
+  else
+    # update.sh may not define env_set_value — write via python
+    python3 - "$ENV_FILE" "DAGYCHU_DOCKER_SOCK" "${detected}" <<'PY'
+import sys
+from pathlib import Path
+
+env_path = Path(sys.argv[1])
+key = sys.argv[2]
+new_value = sys.argv[3]
+lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.is_file() else []
+updated = False
+for idx, raw in enumerate(lines):
+    stripped = raw.strip()
+    if not stripped or stripped.startswith("#") or "=" not in raw:
+        continue
+    k, _ = raw.split("=", 1)
+    if k.strip() == key:
+        lines[idx] = f"{key}={new_value}"
+        updated = True
+        break
+if not updated:
+    lines.append(f"{key}={new_value}")
+env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+  fi
+  echo "JOB_EXECUTOR=docker → Docker socket ${detected} (written to DAGYCHU_DOCKER_SOCK; only docker_proxy mounts it)." >&2
 }
 
 warn_compose_env_dollar_interpolation() {

@@ -146,12 +146,17 @@ preflight_bind_paths() {
   fi
 }
 
-runtime_host_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}/runtime').resolve())")"
+runtime_host_abs="$(resolve_runtime_host_abs)"
 repo_host_abs="$(python3 -c "import pathlib; print(pathlib.Path('${ROOT_DIR}').resolve())")"
 pipeline_yaml_dirs="$(env_get PIPELINE_YAML_DIRS)"
 ensure_runtime_layout "${runtime_host_abs}" "${pipeline_yaml_dirs}"
+sync_docker_bind_runtime_host_if_needed "${runtime_host_abs}"
+ensure_snapshot_host_dir
 
-echo "Upgrade preserves ${ENV_FILE} (not modified), dagychu-instance.yaml, runtime/, and Docker volumes (postgres, rabbitmq, redis, job_logs, …)." >&2
+echo "Upgrade preserves ${ENV_FILE} (not modified except critical bind syncs), dagychu-instance.yaml, runtime data, and Docker volumes (postgres, rabbitmq, redis, job_logs, …)." >&2
+if [[ -n "$(env_get DAGYCHU_RUNTIME_HOST)" ]]; then
+  echo "Projects host path: DAGYCHU_RUNTIME_HOST → ${runtime_host_abs} (mounted at /srv/runtime in containers)." >&2
+fi
 check_env_has_all_example_keys
 
 job_executor="$(env_get JOB_EXECUTOR)"
@@ -160,7 +165,8 @@ if [[ -z "${job_executor}" ]]; then
 fi
 if [[ "${job_executor}" == "docker" ]]; then
   if [[ -f "${ROOT_DIR}/docker-compose.docker-sock.yml" ]]; then
-    echo "JOB_EXECUTOR=docker → including docker-compose.docker-sock.yml (host docker.sock)." >&2
+    echo "JOB_EXECUTOR=docker → including docker-compose.docker-sock.yml (filtered docker_proxy)." >&2
+    ensure_dagychu_docker_sock
   else
     echo "ERROR: JOB_EXECUTOR=docker requires docker-compose.docker-sock.yml next to the compose file." >&2
     echo "Copy it from the client package, or set JOB_EXECUTOR=local." >&2

@@ -1,6 +1,6 @@
 # DAGYCHU — Operations, troubleshooting & platform handoff
 
-> Dagychu **Community** operations notes for image tag **3.4.4** (see pack `VERSION`). Same file ships in the client pack, Community public repository, and **Settings → Documentation → Operations**.
+> Dagychu **Community** operations notes for image tag **3.4.5** (see pack `VERSION`). Same file ships in the client pack, Community public repository, and **Settings → Documentation → Operations**.
 
 This document complements pack **`README.md`** / **`GUIDE.md`**. Language: English (international deployments).
 
@@ -18,7 +18,7 @@ The archive is **compose + env + instance yaml + install/update scripts + operat
 | `EDITION_COMPARISON.md` | Community vs Enterprise capabilities |
 | `RELEASES.md` / `CHANGELOG.md` | Version changelog (newest first) |
 | `docker-compose.yml` | Production stack; image tag = pinned version |
-| `docker-compose.docker-sock.yml` | Optional overlay when `JOB_EXECUTOR=docker` |
+| `docker-compose.docker-sock.yml` | Optional overlay when `JOB_EXECUTOR=docker` (filtered `docker_proxy`; only proxy mounts Engine sock) |
 | `.env.example` | Required environment variables |
 | `dagychu-instance.yaml` | Instance settings; not overwritten on update |
 | `install.sh` / `update.sh` | Pull images and start/update stack |
@@ -33,7 +33,7 @@ After install: **Settings → Documentation** (Guide, Operations, Releases, Edit
 
 1. **Host:** Docker Engine + Compose v2; outbound access to pull the pinned image from **GHCR** (Community public image needs no GitHub login).
 2. **Secrets:** copy `.env.example` → `.env`; set **`POSTGRES_PASSWORD`**, **`UI_ADMIN_TOKEN`**, **`WORKER_SERVICE_TOKEN`** and any auth-related vars; never commit `.env`.
-3. **Runtime:** populate **`./runtime`** next to compose with `pipelines/` and `jobs/` (see `README.md`). Mount is **read-only** in production compose for `api`/`worker`/`scheduler`. Install/update scripts auto-create missing runtime tree for all non-`repo:` groups from **`PIPELINE_YAML_DIRS`**.
+3. **Runtime:** populate the projects tree (default **`./runtime`** next to compose, or **`DAGYCHU_RUNTIME_HOST`** e.g. `/srv/app`) with `pipelines/` and `jobs/` (see `README.md` / Guide). Mount is **read-only** in production compose for `api`/`worker`/`scheduler` at container **`/srv/runtime`**. Install/update scripts auto-create missing runtime tree for all non-`repo:` groups from **`PIPELINE_YAML_DIRS`**. Existing installs that leave `DAGYCHU_RUNTIME_HOST` unset keep the historical `./runtime` layout.
 4. **First start:** `./install.sh` → wait for healthchecks → browse `http://<host>:<FRONTEND_HOST_PORT>`.
 5. **Smoke test:** UI loads → **Pipelines** lists your YAML-synced definitions → create a trivial task or use a demo pipeline if provided.
 
@@ -113,14 +113,14 @@ If a scheduler plan appears to run only when operators open the UI, verify the s
 
 ### 4.8 Docker job runtime and notifications
 
-- **`JOB_EXECUTOR=docker`**: **api** and **worker** need access to a Docker Engine API. The shipped Compose files mount **`/var/run/docker.sock`** into those services; alternatively set **`DOCKER_HOST`** to a TCP endpoint your platform provides. Without this, image builds (admin **Projects**) and containerized job steps will fail.
+- **`JOB_EXECUTOR=docker`**: **api** and **worker** talk to Docker only through the **`docker_proxy`** service from `docker-compose.docker-sock.yml` (filtered TCP API). The host Engine socket is mounted **only** into `docker_proxy` — never into api/worker. `install.sh` / `update.sh` set **`DAGYCHU_DOCKER_SOCK`** automatically (rootless: `/run/user/$UID/docker.sock`; rootful: `/var/run/docker.sock`). Override in `.env` if needed. Without the overlay / a reachable socket, image builds (admin **Projects**) and containerized job steps fail with connection/permission errors.
 - **Admin → Projects → Connect** with **`JOB_EXECUTOR=docker`**: Core builds or reuses the project image **before** setting **connected**. If the image build fails (e.g. **`pip install`**), the API returns **503** and **`detail`** includes a **tail of the Docker build log**; the project is **not** left in a false “connected” state. **Refresh validation** still returns **200** after updating validation; check **`docker_build_ok`** / **`docker_build_message`** in the JSON if the image step fails. **ui_backend** proxies those calls with a long read timeout (**`CORE_HTTP_LONG_TIMEOUT_SEC`**, default **1800**); raise it if builds exceed that. If a reverse proxy sits in front of **ui_backend**, increase its read timeout for **`/api/ui/admin/projects/*/connect`** and **`.../validate-and-refresh`** as well.
-- **`JOB_EXECUTOR=local`** (default): jobs run as subprocesses on the worker host; no Docker socket required. If you never use **`docker`**, you may remove the **`/var/run/docker.sock`** bind mounts from **api** and **worker** in Compose for tighter isolation.
+- **`JOB_EXECUTOR=local`** (default for tight isolation): jobs run as subprocesses on the worker host; no Docker socket / proxy required.
 - **Lifecycle:** When an operator connects a project (admin **Projects**), Core validates **`dagychu-config.yaml`** and builds a **per-project Docker image** (tag derived from config/deps hashes). **Each job step** runs in a **new short-lived container** from that image, then the container is removed. There is **no** long-lived container per project.
 - **Mounts inside the job container:** The pipeline group root is bind-mounted at **`/workspace` read-only**. The orchestrator does not write into the project tree (which may be replaced by git pulls on the host). **Write outputs** to **`volumes.external`** paths marked **`read_write`** in **`dagychu-config.yaml`**, or to **`/tmp`** inside the container (ephemeral, discarded when the container exits).
 - **Build context:** Image builds copy the project tree into a writable staging directory under **`DAGYCHU_BUILD_ROOT`** (named volume in shipped Compose), not into **`./runtime`** on the host — production **`./runtime`** stays read-only for **api**/**worker**.
 - **Step payload bind:** Each Docker job step receives JSON input via a file bind-mounted from **`DAGYCHU_BUILD_ROOT/payloads/`** (not under the read-only project tree). By default, install/update scripts auto-discover the mountpoint for compose volume `dagychu_build` and write it into **`DAGYCHU_DOCKER_BIND_BUILD_HOST`** when missing. Manual override is still supported for custom platforms.
-- **Runtime bind for multi-project:** one **`DAGYCHU_DOCKER_BIND_RUNTIME_HOST`** points to shared runtime root (usually `./runtime`). Multiple project groups from **`PIPELINE_YAML_DIRS`** live inside that root; no per-group bind env is required.
+- **Runtime bind for multi-project:** one host projects root (**`DAGYCHU_RUNTIME_HOST`**, default `./runtime`) mounts to container `/srv/runtime`. **`DAGYCHU_DOCKER_BIND_RUNTIME_HOST`** (usually auto-synced to the same absolute path) is what job containers bind when **`JOB_EXECUTOR=docker`**. Multiple project groups from **`PIPELINE_YAML_DIRS`** live inside that root; no per-group bind env is required. Example external layout: host `/srv/app/development/...` with `DAGYCHU_RUNTIME_HOST=/srv/app` and `PIPELINE_YAML_DIRS=development=development,...`.
 - **Dev helper for missing host paths:** if external volume `host_path` is missing and jobs fail with Docker bind errors, you can set:
   - `DAGYCHU_DOCKER_AUTO_CREATE_MISSING_HOST_PATHS=true`
   - worker/admin preflight first attempt `mkdir -p` for missing `read_write` external volume paths.
@@ -164,10 +164,12 @@ Then start the rest of the stack / re-run `./update.sh`. After the schema exists
 - **Upgrades:** read pack **`RELEASES.md`** first; replace `docker-compose.yml` from a newer client package, run `./update.sh` (does not edit `.env`; prompts if new keys are missing, then pulls images and recreates containers; volumes preserved). **Do not** use `./install.sh` on a live deployment — it replaces `.env` from example.
 - **Rollback:** pin `docker-compose.yml` (and pack files) to the previous image tag / client pack version, run `./update.sh` (or `docker compose up -d`). Postgres/RabbitMQ volumes are kept; do not run destructive volume deletes. Schema migrations are generally forward-compatible — if a release notes a hard migration, follow that release’s rollback note.
 - **Backups:** persist **`postgres_data`** volume (or external managed DB); document restore procedure. PostgreSQL is the primary state store.
-- **ClickHouse (optional):** report sync only when configured; not required for core runs.
+- **Config Snapshot (Admin → Snapshots):** download/restore config without pg_dump. Restores keep **`task_id`** / scheduler **`job_id`** for integrations. Snapshots **omit secrets** — after apply, re-enter: Scheduler webhook secrets, Admin → Projects secret runtime vars (needs **`PROJECT_VARS_SECRET_KEY`**), notification Slack/Telegram tokens, new API tokens (old hashes are useless), and confirm **`CLICKHOUSE_*`** / OIDC / service tokens in `.env`. Also ensure **`runtime/**` pipeline + job code** and **`dagychu-instance.yaml`** match the source (companion checklist in the UI). Archives are on the **host** under **`DAGYCHU_SNAPSHOT_HOST`** (default **`./snapshots`** next to the pack; e.g. `/srv/dagychu/snapshots`) — compose mounts that directory into `api` at `/var/lib/dagychu/snapshots` automatically (`install.sh` / `update.sh` create it). Optional **`DAGYCHU_SNAPSHOT_SIGNING_KEY`**: when set, archives are HMAC-signed and apply rejects tampered files; for disaster recovery **without** that key, leave it unset — restore is allowed with a UI warning that integrity could not be verified. Also: **`DAGYCHU_SNAPSHOT_RETENTION`** (default 14), **`DAGYCHU_SNAPSHOT_REMOTE_PUT_URL`**.
+- **ClickHouse (optional, Enterprise BI pack):** report sync only when configured; not required for core runs. Saved table-report API snippets should call **`/api/ui/table-reports/{table_id}/{report_id}/data`** (Bearer token). Community images gate full-page reports — see **`EDITION_COMPARISON.md`**.
+- **`PIPELINE_YAML_DIRS`:** list only the project groups you mount under runtime. New installs do **not** require a `dagychu_system=` entry (platform example group is optional / in-image for older setups).
 - **Logs:** job logs on worker volume **`JOB_LOG_DIR`** — plan retention (**`JOB_LOG_TOTAL_MAX_MB`**).
 - **Secrets rotation:** update `.env`, recreate containers; ensure scheduler/worker pick up new service token.
-- **Disk space:** Postgres + RabbitMQ volumes + job logs.
+- **Disk space:** Postgres + RabbitMQ volumes + job logs (+ snapshot archive dir if scheduled).
 - **Retries / external side effects:** Dagychu does **not** provide exactly-once delivery to external systems; design jobs for safe retry.
 
 ---

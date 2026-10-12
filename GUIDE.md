@@ -1,6 +1,6 @@
 # DAGYCHU — User & operator guide
 
-> Operator and user guide for Dagychu **Community**. Product version: see pack / repo **`VERSION`** and **Settings → Documentation → Releases** (current line **3.4.4**). Same document ships in the client pack and Community public repository.
+> Operator and user guide for Dagychu **Community**. Product version: see pack / repo **`VERSION`** and **Settings → Documentation → Releases** (current line **3.4.5**). Same document ships in the client pack and Community public repository.
 
 This guide is for a **first-time operator**: install → open the UI → understand every menu item → run daily work safely. Deep troubleshooting and Kubernetes handoff live in **Settings → Documentation → Operations**.
 
@@ -89,7 +89,7 @@ Typical ports: Core `8000`, Scheduler `9020`, Ui_backend `9010`, Vite `3000`, Ra
 
 ## 3. Runtime: pipelines, jobs, projects
 
-Job code and pipeline YAML live under **`RUNTIME_ROOT`** (Compose: host `runtime/` → `/srv/runtime`), not inside the Python package.
+Job code and pipeline YAML live under **`RUNTIME_ROOT`** (Compose: host **`DAGYCHU_RUNTIME_HOST`** default `./runtime` → container `/srv/runtime`), not inside the Python package. To keep projects outside the pack directory (e.g. host `/srv/app` next to `/srv/dagychu`), set `DAGYCHU_RUNTIME_HOST=/srv/app` in `.env` and recreate; leave unset to keep the classic `./runtime` layout.
 
 ### 3.1 Layout & Code Placement (Git / CI/CD)
 
@@ -330,7 +330,7 @@ Edition notes: the Scheduler **screen** exists in Community. Public webhook HTTP
 
 ### 9.2 Plans table (New UI)
 
-Columns are compact: plan id, type, schedule summary, task, enabled, next run. Next to the time: **recompute** (nearest slot from now) and **skip next run** (cron/SLA only — jump to the following slot; recompute brings back the nearest). Full column set remains on the **table report** export.
+Columns are compact: plan id, type, schedule summary, task, enabled, next run. Next to the time: **recompute** (nearest slot from now) and **skip next run** (cron/SLA only — jump to the following slot; recompute brings back the nearest). The **full** column set on an expanded table report is **Enterprise**.
 
 Row clicks do not start editing. Use the **action icons on the right** (same pattern as Tasks):
 
@@ -541,11 +541,17 @@ Many screens share **TableToolkit**:
 
 - Sort / filter / visible columns / page size (often persisted per table id).
 - Date/ID columns may sort **newest first** first; second click = ascending; third = clear.
-- Export / shareable **table report** URLs where enabled (Scheduler plans report keeps the **full** column set; the Scheduler screen uses a compact set).
-- Saved reports can expose selected task, job-run, scheduler, operation, and incident fields as CSV or JSON.
-- Optional ClickHouse synchronization publishes report rows to a dedicated `dagychu_reports` database when `CLICKHOUSE_URL` is configured. This is report synchronization for BI access, not Dagychu's primary state store; PostgreSQL remains authoritative. Job `input_json` and `output_json` are available in applicable job-run reports.
 - Saved views / presets when offered.
 - **Row actions** (Tasks, Scheduler) live in a trailing icon rail — not on the id cell.
+- **Entity notes** — severity icon on task / scheduler plan / pipeline rows; one Markdown note per object.
+
+**Enterprise-only report pack** (Community shows an upgrade gate instead of a live page):
+
+- Full-page expanded **table report** (`view=table`), shareable URL, and CSV / JSON / XLSX / SQL export.
+- Saved **BI report** configs, API export (`/api/ui/table-reports/.../data`), and optional ClickHouse sync when `CLICKHOUSE_URL` is set (`dagychu_reports` database). PostgreSQL remains authoritative; ClickHouse is report sync only.
+- Job **output view** designer Open (full expanded report). See pack **`EDITION_COMPARISON.md`**.
+
+On Community, use inline tables on Tasks / Scheduler / Logs; do not expect full-page BI export in this edition.
 
 ---
 
@@ -562,7 +568,7 @@ The HTTP External API (`/ext/tasks`, …) is an **Enterprise** capability. See p
 - **Unchanged Python/Bash:** Point pipeline `path:` at your scripts. Jobs read structured JSON from **stdin** and emit a JSON object on **stdout** (logs may mix; prefer `write_stdout_json` / `__JOB_OUTPUT_JSON__`). You do not rewrite scripts into a proprietary SDK.
 - **JSON for structured I/O only:** stdin/stdout JSON wires pipeline keys. This is **not** a promise of business-level idempotency or exactly-once side effects.
 - **PostgreSQL** is the primary orchestration and state store (tasks, runs, definitions, users, audit).
-- **ClickHouse** is optional report synchronization for BI when configured — not required for core pipeline execution.
+- **ClickHouse** is optional **Enterprise** report synchronization for BI when configured — not required for core pipeline execution; Community has no full-page BI report pack.
 - **No exactly-once for external actions:** retries and reruns may call external systems more than once. Design jobs and downstream systems accordingly (idempotent keys, safe upserts, or compensating actions).
 
 ---
