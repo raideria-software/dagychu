@@ -8,6 +8,12 @@ Dagychu helps engineering and data teams define repeatable workflows, run them o
 
 Dagychu Community is the **free self-hosted edition of Dagychu**, developed and maintained by Raideria LLC. It is distributed as versioned container images together with a public install/distribution repository.
 
+## See Dagychu in a live web application
+
+The [Raideria Lab demo](https://lab.raideria.com/tools/breakflow?utm_source=github&utm_medium=readme&utm_campaign=dagychu_live_demo_2026_10) shows how a web application creates work for Dagychu. Breakflow is the **example application**: submit a workflow analysis request, then inspect the related Dagychu task, job runs, logs, and result. Two example runs are available without signing in.
+
+The linked public stand runs **Dagychu Enterprise** with read-only guest access. Use this demo to see the execution model before choosing an edition or installing Community.
+
 ## What’s new / upgrades
 
 - **This pack’s version** is in the root **`VERSION`** file (and the image tag in `docker-compose.yml`). Current line: **3.4.5**.
@@ -183,6 +189,7 @@ The public GitHub organization and repository are distribution and collaboration
 
 ## Links
 
+- [Live web-application demo in Raideria Lab](https://lab.raideria.com/tools/breakflow?utm_source=github&utm_medium=readme&utm_campaign=dagychu_live_demo_2026_10) — submit a request and inspect its Dagychu execution.
 - [Dagychu product and Enterprise](https://software.raideria.com/products/dagychu) — capabilities, buyer guides, and live-demo access.
 - [Operational reliability pilot](https://software.raideria.com/products/dagychu/operational-reliability-pilot) — evaluate one real workflow with agreed success, failure, investigation, and recovery evidence.
 
