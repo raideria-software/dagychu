@@ -1,6 +1,6 @@
 # DAGYCHU — User & operator guide
 
-> Operator and user guide for Dagychu **Community**. Product version: see pack / repo **`VERSION`** and **Settings → Documentation → Releases** (current line **3.4.5**). Same document ships in the client pack and Community public repository.
+> Operator and user guide for Dagychu **Community**. Product version: see pack / repo **`VERSION`** and **Settings → Documentation → Releases** (current line **3.4.6**). Same document ships in the client pack and Community public repository.
 
 This guide is for a **first-time operator**: install → open the UI → understand every menu item → run daily work safely. Deep troubleshooting and Kubernetes handoff live in **Settings → Documentation → Operations**.
 

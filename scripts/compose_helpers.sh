@@ -204,6 +204,83 @@ stop_task_writers() {
   stop_app_tier_for_migrate
 }
 
+resolve_api_ready_timeout() {
+  # Prefer install-specific override, then update/shared keys, then 600s.
+  local timeout_sec
+  timeout_sec="$(env_get INSTALL_API_READY_TIMEOUT_SEC)"
+  if [[ -z "${timeout_sec}" ]]; then
+    timeout_sec="$(env_get UPDATE_API_READY_TIMEOUT_SEC)"
+  fi
+  if [[ -z "${timeout_sec}" ]]; then
+    timeout_sec="$(env_get INIT_DB_LOCK_TIMEOUT_SEC)"
+  fi
+  if [[ -z "${timeout_sec}" ]] || ! [[ "${timeout_sec}" =~ ^[0-9]+$ ]]; then
+    timeout_sec="600"
+  fi
+  echo "${timeout_sec}"
+}
+
+resolve_ui_ready_timeout() {
+  local timeout_sec
+  timeout_sec="$(env_get INSTALL_UI_READY_TIMEOUT_SEC)"
+  if [[ -z "${timeout_sec}" ]] || ! [[ "${timeout_sec}" =~ ^[0-9]+$ ]]; then
+    timeout_sec="180"
+  fi
+  echo "${timeout_sec}"
+}
+
+compose_retry() {
+  # compose_retry <label> <max_attempts> <command...>
+  local label="$1"
+  local max_attempts="$2"
+  shift 2
+  local attempt=1
+  local delay=5
+  while (( attempt <= max_attempts )); do
+    if "$@"; then
+      return 0
+    fi
+    if (( attempt == max_attempts )); then
+      echo "ERROR: ${label} failed after ${max_attempts} attempt(s)." >&2
+      return 1
+    fi
+    echo "WARNING: ${label} failed (attempt ${attempt}/${max_attempts}); retrying in ${delay}s..." >&2
+    sleep "${delay}"
+    delay=$((delay * 2))
+    if (( delay > 30 )); then
+      delay=30
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+compose_pull_with_retry() {
+  local attempts="${1:-3}"
+  if ! [[ "${attempts}" =~ ^[0-9]+$ ]] || [[ "${attempts}" -lt 1 ]]; then
+    attempts=3
+  fi
+  echo "Pulling images..." >&2
+  compose_retry "docker compose pull" "${attempts}" compose_cmd pull
+}
+
+dump_install_failure_diagnostics() {
+  echo "--------------------------------------------------------------------" >&2
+  echo "Install failed — service status and recent logs:" >&2
+  echo "--------------------------------------------------------------------" >&2
+  compose_cmd ps >&2 || true
+  for svc in api ui_backend postgres scheduler worker; do
+    if compose_has_service "${svc}"; then
+      echo "----- ${svc} (last 80 lines) -----" >&2
+      compose_cmd logs "${svc}" --tail=80 >&2 || true
+    fi
+  done
+  echo "--------------------------------------------------------------------" >&2
+  echo "Fix the cause above, then resume without rewriting .env:" >&2
+  echo "  DAGYCHU_INSTALL_RESUME=1 ./install.sh" >&2
+  echo "Do not re-run a full ./install.sh once .env/volumes exist (it refuses and would risk secrets)." >&2
+}
+
 wait_for_api_ready() {
   local timeout_sec="${1:-600}"
   local deadline=$((SECONDS + timeout_sec))
@@ -244,20 +321,36 @@ except Exception as e:
   return 1
 }
 
-# Ordered production upgrade: writers down → infra → API recreate → /ready → workers/UI.
-# Preserves named volumes, bind mounts, .env, dagychu-instance.yaml, runtime/.
-compose_up_safe_upgrade() {
-  local api_ready_timeout
-  api_ready_timeout="$(env_get UPDATE_API_READY_TIMEOUT_SEC)"
-  if [[ -z "${api_ready_timeout}" ]]; then
-    api_ready_timeout="$(env_get INIT_DB_LOCK_TIMEOUT_SEC)"
+wait_for_ui_backend_healthy() {
+  if ! compose_has_service ui_backend; then
+    return 0
   fi
-  if [[ -z "${api_ready_timeout}" ]] || ! [[ "${api_ready_timeout}" =~ ^[0-9]+$ ]]; then
-    api_ready_timeout="600"
+  local timeout_sec="${1:-}"
+  if [[ -z "${timeout_sec}" ]]; then
+    timeout_sec="$(resolve_ui_ready_timeout)"
   fi
+  local deadline=$((SECONDS + timeout_sec))
+  echo "Waiting for UI backend /health (up to ${timeout_sec}s)..." >&2
+  while (( SECONDS < deadline )); do
+    if ! compose_cmd ps --status running -q ui_backend 2>/dev/null | grep -q .; then
+      sleep 2
+      continue
+    fi
+    if compose_cmd exec -T ui_backend python -c \
+      "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9010/health', timeout=5).read()" \
+      2>/dev/null; then
+      echo "UI backend is healthy." >&2
+      return 0
+    fi
+    sleep 3
+  done
+  echo "ERROR: UI backend did not become healthy within ${timeout_sec}s." >&2
+  compose_cmd logs ui_backend --tail=80 >&2 || true
+  compose_cmd ps >&2 || true
+  return 1
+}
 
-  stop_app_tier_for_migrate
-
+_compose_start_infra() {
   local -a infra=()
   local s
   for s in postgres rabbitmq redis clickhouse; do
@@ -265,10 +358,83 @@ compose_up_safe_upgrade() {
       infra+=("${s}")
     fi
   done
-  if [[ "${#infra[@]}" -gt 0 ]]; then
-    echo "Ensuring infrastructure is up (volumes reused, no data wipe): ${infra[*]}" >&2
-    compose_cmd up -d "${infra[@]}"
+  if [[ "${#infra[@]}" -eq 0 ]]; then
+    return 0
   fi
+  echo "Starting infrastructure: ${infra[*]}" >&2
+  compose_retry "infrastructure up (${infra[*]})" 3 compose_cmd up -d "${infra[@]}"
+}
+
+_compose_start_api_with_ready_retries() {
+  local api_ready_timeout="$1"
+  local force_first="${2:-0}"
+  local api_max=3
+  local api_attempt=1
+  while (( api_attempt <= api_max )); do
+    if (( api_attempt == 1 && force_first == 0 )); then
+      echo "Starting Core API (attempt ${api_attempt}/${api_max})..." >&2
+      compose_cmd up -d --no-deps api
+    else
+      echo "Recreating Core API (attempt ${api_attempt}/${api_max}; escapes stuck init_db)..." >&2
+      compose_cmd up -d --force-recreate --no-deps api
+    fi
+    if wait_for_api_ready "${api_ready_timeout}"; then
+      return 0
+    fi
+    if (( api_attempt == api_max )); then
+      echo "ERROR: Core API did not become ready after ${api_max} attempts." >&2
+      return 1
+    fi
+    echo "WARNING: API not ready; will recreate and retry..." >&2
+    sleep 5
+    api_attempt=$((api_attempt + 1))
+  done
+  return 1
+}
+
+_compose_start_app_tier() {
+  # workers (+ optional deadline reserve) then scheduler + ui_backend
+  local force_ui="${1:-0}"
+  echo "Starting remaining services (workers, scheduler, UI)..." >&2
+  compose_retry "app services up" 3 compose_up_scaled
+  if compose_has_service scheduler; then
+    compose_cmd up -d --no-deps scheduler || compose_cmd up -d scheduler
+  fi
+  if compose_has_service ui_backend; then
+    if [[ "${force_ui}" == "1" ]]; then
+      compose_cmd up -d --force-recreate --no-deps ui_backend || compose_cmd up -d ui_backend || true
+    else
+      compose_cmd up -d --no-deps ui_backend || compose_cmd up -d ui_backend
+    fi
+  fi
+}
+
+# Fresh install: infra → API (+ recreate retries) → /ready → workers/UI → UI /health.
+# Does not wipe volumes; safe if infra already partially started.
+compose_up_safe_install() {
+  local api_ready_timeout ui_ready_timeout
+  api_ready_timeout="$(resolve_api_ready_timeout)"
+  ui_ready_timeout="$(resolve_ui_ready_timeout)"
+
+  _compose_start_infra || return 1
+
+  if compose_has_service api; then
+    _compose_start_api_with_ready_retries "${api_ready_timeout}" 0 || return 1
+  fi
+
+  _compose_start_app_tier 0 || return 1
+  wait_for_ui_backend_healthy "${ui_ready_timeout}" || return 1
+}
+
+# Ordered production upgrade: writers down → infra → API recreate → /ready → workers/UI.
+# Preserves named volumes, bind mounts, .env, dagychu-instance.yaml, runtime/.
+compose_up_safe_upgrade() {
+  local api_ready_timeout
+  api_ready_timeout="$(resolve_api_ready_timeout)"
+
+  stop_app_tier_for_migrate
+
+  _compose_start_infra || return 1
 
   if compose_has_service api; then
     echo "Recreating Core API (force-recreate escapes stuck init_db; DB volume untouched)..." >&2
@@ -280,15 +446,7 @@ compose_up_safe_upgrade() {
     }
   fi
 
-  echo "Starting remaining services (workers, scheduler, UI)..." >&2
-  compose_up_scaled
-
-  if compose_has_service scheduler; then
-    compose_cmd up -d --no-deps scheduler || compose_cmd up -d scheduler
-  fi
-  if compose_has_service ui_backend; then
-    compose_cmd up -d --force-recreate --no-deps ui_backend || true
-  fi
+  _compose_start_app_tier 1
 }
 
 # Refuse install.sh on an existing deployment (protects .env, DB volumes, runtime/).

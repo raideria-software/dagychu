@@ -1,6 +1,6 @@
 # Dagychu — releases
 
-**Current version: 3.4.5**
+**Current version: 3.4.6**
 
 Product release notes, **newest first**. Compare with your install’s `VERSION` file before `./update.sh`. The same text ships as pack **`RELEASES.md`** / **`CHANGELOG.md`** and in **Settings → Documentation → Releases**.
 
@@ -16,6 +16,33 @@ Product release notes, **newest first**. Compare with your install’s `VERSION`
 | **ui_backend** | Proxies to Core + Scheduler; reads job logs from disk; serves built React UI |
 | **postgres** | Tasks, runs, pipelines, users/sessions, audit |
 | **rabbitmq** | Worker queue |
+
+---
+
+## 3.4.6
+
+**Focus:** mobile-only work modes, a failure-first investigation flow, and contextual section tips. Desktop navigation and layouts remain unchanged.
+
+The repo **`VERSION`** file: **3.4.6** (previous line **3.4.5**).
+
+**Highlights:**
+
+- **Three mobile modes:** Observe, Investigate, and Create. A large bottom navigation switches modes; each mode exposes its own relevant screens. Settings, Guide, Administration, and Logout are under More, subject to existing access rules.
+- **Investigate:** mobile task registry defaults to failed tasks, with search and an all-tasks filter. Task investigation presents jobs as a vertical list with failed jobs first, error excerpts, and large Details / Open logs actions instead of the desktop graph.
+- **Create:** registered pipelines appear as searchable cards with a direct create-task action. The task form has larger mobile controls and retains the existing write permissions and validation.
+- **Observe:** mobile navigation groups Dashboard, System, and Events. The existing screen data and API contracts are unchanged.
+- **Contextual tips:** desktop sidebar rail with expandable floating card; mobile bottom tip sheet (strip → title → full) sits flush on the mode dock with a frosted-glass panel. Tips follow the active screen, including mobile Observe / Investigate / Create.
+- **Tip catalog & languages:** one tip = one function; authored Russian catalog (`tips.ru.md`) with a matching English catalog that uses real English UI labels (`tips.en.md`). Other UI languages reuse the English tip catalog at runtime. **Guide → Tips** browses the full catalog for the current tip language.
+- **Spotlight & tip actions:** highlight paths can auto-open nested controls (for example Settings → Locale); Open section / Highlight toolbar actions; when an action is unavailable it stays visible but disabled with a hover reason. Closing the floating tip returns to the rail without collapsing tips entirely.
+- **Mobile chrome:** product logo beside the DAGYCHU wordmark in the telemetry header (replaces the green status pulse).
+- **Install wizard:** guided install with hard-ready checks (API `/ready`, UI `/health`), retries on transient pull/API failures, and `DAGYCHU_INSTALL_RESUME` without rewriting `.env`.
+- **Localization:** mobile mode, investigation, and tips strings added to shipped locale catalogs. Russian tip prose is authored; other non-English UI locales use English tips for now.
+
+**Compatibility:** no database, API, environment, or Compose changes. Existing Desktop and Classic desktop surfaces retain their previous behavior.
+
+*Upgrade note:* use a matching 3.4.6 image and client pack when available. Validate against a running backend and real mobile devices before production rollout.
+
+*Known limitations:* no authenticated end-to-end mobile test or real-user usability test has been completed. Enterprise OIDC/Keycloak sign-in is **not** included in 3.4.6; the existing backend groundwork needs a complete browser login flow and security review before release.
 
 ---
 

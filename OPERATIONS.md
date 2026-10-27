@@ -1,6 +1,6 @@
 # DAGYCHU — Operations, troubleshooting & platform handoff
 
-> Dagychu **Community** operations notes for image tag **3.4.5** (see pack `VERSION`). Same file ships in the client pack, Community public repository, and **Settings → Documentation → Operations**.
+> Dagychu **Community** operations notes for image tag **3.4.6** (see pack `VERSION`). Same file ships in the client pack, Community public repository, and **Settings → Documentation → Operations**.
 
 This document complements pack **`README.md`** / **`GUIDE.md`**. Language: English (international deployments).
 

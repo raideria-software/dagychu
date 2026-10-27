@@ -195,8 +195,14 @@ if [[ "${UPDATE_SKIP_MAINTENANCE_CHECK:-}" != "1" ]]; then
   fi
 fi
 
-echo "Pulling images defined in ${COMPOSE_FILE}..." >&2
-compose_cmd pull
+pull_retries="$(env_get INSTALL_PULL_RETRIES)"
+if [[ -z "${pull_retries}" ]] || ! [[ "${pull_retries}" =~ ^[0-9]+$ ]]; then
+  pull_retries=3
+fi
+if ! compose_pull_with_retry "${pull_retries}"; then
+  echo "ERROR: image pull failed; upgrade aborted (volumes/.env untouched)." >&2
+  exit 1
+fi
 
 echo "Applying safe upgrade (stop writers → recreate API → wait /ready → start workers)..." >&2
 echo "Client data is preserved: Docker volumes, ${ENV_FILE}, runtime/, dagychu-instance.yaml. Tour and operator docs come from the image." >&2
@@ -209,7 +215,9 @@ while (( SECONDS < deadline )); do
   unhealthy="$(compose_cmd ps --format json | python3 -c "
 import sys, json
 raw = sys.stdin.read().strip()
-rows = json.loads(raw) if raw else []
+# Compose versions emit either a JSON array or one JSON object per line.
+rows = (json.loads(raw) if raw.startswith('[') else
+        [json.loads(line) for line in raw.splitlines() if line.strip()]) if raw else []
 # Ignore one-shot / exited bootstrap; require running services with health to be healthy.
 bad = 0
 for r in rows:

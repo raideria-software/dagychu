@@ -1,6 +1,6 @@
 # Dagychu — Community vs Enterprise
 
-> Documentation for image / pack tag **3.4.5** (see `VERSION`). Ships in the Community client pack, public repository, and **Settings → Documentation → Edition comparison**.
+> Documentation for image / pack tag **3.4.6** (see `VERSION`). Ships in the Community client pack, public repository, and **Settings → Documentation → Edition comparison**.
 
 Shared core for a given release tag is the same in both editions: pipelines, jobs, scheduler (cron / SLA / webhook / manual / dependency watchers), workers, logs, and the operator UI shell. The **former Pro SKU is removed**; its capabilities live in **Enterprise** only.
 

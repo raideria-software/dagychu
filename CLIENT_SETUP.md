@@ -169,8 +169,16 @@ YAML files in existing groups also sync on `PIPELINE_DISK_SYNC_INTERVAL_SECONDS`
 3. Run:
    - `./install.sh`
 
-   That copies `.env.example` → `.env`, generates all passwords and tokens, and creates `runtime/demo|development|production`. The script then lists what was created and waits for **`y`** before pulling images and starting containers. Review `.env` / `dagychu-instance.yaml` first if you want. Non-interactive: `DAGYCHU_INSTALL_ASSUME_YES=1 ./install.sh`.
-4. Open the UI (install.sh prints the URL and admin token in color). Default: `http://<host>:3000` (or `FRONTEND_HOST_PORT`). Sign in by pasting the UI admin token.
+   The installer prints an **edition-accurate plan** (which Docker services will run and why), then asks **four numbered questions**:
+   1. Begin installation? (`y` / `N`) — answering `N` exits without changing files.
+   2. `WORKER_REPLICAS` — max concurrent independent pipeline runs (CPU-oriented heuristic explained in the prompt).
+   3. Host path for project/job scripts (`DAGYCHU_RUNTIME_HOST`; default is `<pack>/runtime`).
+   4. After `.env` is generated (existing `.env` is backed up) and important values are shown, confirm pull/start of containers.
+
+   Non-interactive: `DAGYCHU_INSTALL_ASSUME_YES=1 ./install.sh` (skips 1/4–4/4, uses defaults).
+
+   After confirmation, install **pulls with retries**, starts **infra → Core API `/ready` → workers/UI**, and only prints the login banner when API and UI health checks pass. On failure it exits non-zero, prints `compose ps` and recent logs, and does **not** claim success. Resume a failed first start without rewriting secrets: `DAGYCHU_INSTALL_RESUME=1 ./install.sh`. Optional overrides in `.env`: `INSTALL_PULL_RETRIES` (default 3), `INSTALL_API_READY_TIMEOUT_SEC` (default 600), `INSTALL_UI_READY_TIMEOUT_SEC` (default 180).
+4. Open the UI (install.sh prints the URL and admin token in color). Default: `http://<host>:3000` (or `FRONTEND_HOST_PORT`). Sign in by pasting the UI admin token. Connect projects under **Administration → Projects** before the first run.
 
 Public exposed port in `.env`:
 - `FRONTEND_HOST_PORT`
