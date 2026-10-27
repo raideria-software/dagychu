@@ -1,6 +1,6 @@
 # Dagychu Community
 
-**Current version: 3.4.5**
+**Current version: 3.4.6**
 
 **Self-hosted execution control for production jobs and pipelines.**
 
@@ -10,7 +10,7 @@ Dagychu Community is the **free self-hosted edition of Dagychu**, developed and 
 
 ## What’s new / upgrades
 
-- **This pack’s version** is in the root **`VERSION`** file (and the image tag in `docker-compose.yml`). Current line: **3.4.5**.
+- **This pack’s version** is in the root **`VERSION`** file (and the image tag in `docker-compose.yml`). Current line: **3.4.6**.
 - **Full changelog:** [RELEASES.md](RELEASES.md) (same text as [CHANGELOG.md](CHANGELOG.md)) — newest first. Read versions newer than your install before `./update.sh`.
 - After install, the same notes are in **Settings → Documentation → Releases**.
 
@@ -92,14 +92,14 @@ Requirements: Docker Engine and Docker Compose v2, plus outbound access to pull 
 The stack uses `docker-compose.yml` (pinned `ghcr.io/raideria-software/dagychu:<version>`). Optional overlay when jobs run via the host Docker engine: `docker-compose.docker-sock.yml` (`JOB_EXECUTOR=docker`).
 
 ```bash
-docker pull ghcr.io/raideria-software/dagychu:3.4.5
+docker pull ghcr.io/raideria-software/dagychu:3.4.6
 ```
 
 Demo pipelines are seeded under `runtime/demo/` on first install. Runs require a **connected** project: open **Administration → Projects**, validate and connect the group before the first run (`execution.project_execution_gate_enabled` in `dagychu-instance.yaml`). Operator steps: [CLIENT_SETUP.md](CLIENT_SETUP.md).
 
 After install, use `./update.sh` for a newer pack/image tag. Do **not** run `./install.sh` again on an existing deployment (it regenerates secrets).
 
-Use explicit version tags in production rather than `latest`. Current product line: **3.4.5**.
+Use explicit version tags in production rather than `latest`. Current product line: **3.4.6**.
 
 ## What this repository contains
 
